@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Luxury Tree - Custom Edition</title>
+    <title>Lucky Lantern - Custom Edition</title>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Ma+Shan+Zheng&display=swap');
@@ -49,13 +49,17 @@
         .spinner { width: 40px; height: 40px; border: 2px solid rgba(212, 175, 55, 0.1); border-top: 2px solid #d4af37; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        #top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 30; display: flex; flex-direction: row; gap: 15px; pointer-events: auto; }
+        #top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 30; display: none; flex-direction: row; gap: 15px; pointer-events: auto; }
+        #top-left-controls { position: absolute; top: 16px; left: 16px; z-index: 30; pointer-events: auto; }
         .control-col { display: flex; flex-direction: column; gap: 15px; }
         
         .control-btn { background: rgba(10, 10, 10, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; width: 100px; padding: 5px 0; border-radius: 7px; font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.3s ease; }
         .control-btn:hover { background: rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 0.8); color: #fff; transform: scale(1.05); }
         .control-btn:active { transform: scale(0.95); }
         .control-btn.disabled { color: #666; border-color: #444; }
+        .icon-btn { width: 38px; height: 38px; border-radius: 10px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(10, 10, 10, 0.7); border: 1px solid rgba(255, 215, 160, 0.6); color: #f6d27f; box-shadow: 0 0 12px rgba(255, 187, 92, 0.25); position: relative; }
+        .icon-btn::before { content: ""; width: 18px; height: 18px; display: block; mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M7 3H3v4h2V5h2V3zm12 0h-4v2h2v2h2V3zM5 17H3v4h4v-2H5v-2zm16 0h-2v2h-2v2h4v-4zM7 7h10v10H7V7zm2 2v6h6V9H9z"/></svg>') center / contain no-repeat; background: currentColor; }
+        .icon-btn span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
         
         #file-input, #music-input, #import-input { display: none; }
 
@@ -99,6 +103,10 @@
     <div id="ui-layer">
         <div id="main-title"></div>
 
+        <div id="top-left-controls">
+            <button id="btn-fullscreen" class="control-btn icon-btn"><span>全屏显示</span></button>
+        </div>
+
         <div id="top-right-controls">
             <div class="control-col" id="col-media">
                 <button id="btn-bg-music" class="control-btn">上传音乐</button>
@@ -109,7 +117,6 @@
             <div class="control-col" id="col-system">
                 <button id="btn-import" class="control-btn">导入网页</button>
                 <button id="btn-export" class="control-btn">导出网页</button>
-                <button id="btn-fullscreen" class="control-btn">全屏显示</button>
                 <button id="btn-switch-theme" class="control-btn">颜色切换</button>
             </div>
         </div>
@@ -151,19 +158,16 @@
 
         const CONFIG = {
             colors: {
-                bg: 0x020205, gold: 0xffd700, red: 0x880000, green: 0x004400,
-                iceBlue: 0xaaddff, 
-                iceCyan: 0x00ffff, 
-                iceMagenta: 0xff00cc,
-                iceDeep: 0x002244,
-                white: 0xffffff,
-                barbieHot: 0xff1694,
-                barbieSoft: 0xffb7c5,
-                barbieViolet: 0xd461e3
+                bg: 0x020205,
+                gold: 0xffd700,
+                pinkHot: 0xff3aa5,
+                pinkSoft: 0xffb7c5
             },
             particles: { 
-                count: 1800, dustCount: 1500, treeHeight: 28, treeRadius: 9,
-                snowCount: 2500, snowSpeed: 10 
+                count: 1400,
+                dustCount: 1000,
+                lanternHeight: 26,
+                lanternRadius: 8.5
             },
             camera: { z: 55 },
             gestures: { palmOpenThreshold: 0.35, sensitivity: 6.0 }
@@ -188,11 +192,10 @@
         let scene, camera, renderer, composer, clock = new THREE.Clock();
         let mainGroup, starGroup, bgGroup, photoMeshGroup, particleSystem = []; 
         let galaxySystem = null; 
-        let snowSystem = null;
         let heartSystem = null;
 
         let handLandmarker, video, drawingUtils, canvasCtx;
-        let caneTexture, snowTexture, heartTexture, matLib = {};
+        let heartTexture, matLib = {};
         
         const _tempVec = new THREE.Vector3();
         const _targetVec = new THREE.Vector3();
@@ -206,7 +209,6 @@
             createMaterials(); 
             
             createGalaxyBackground(); 
-            createSnowBackground();
             createHeartBackground();
             
             createParticles();      
@@ -275,45 +277,7 @@
             composer.addPass(bloom);
         }
 
-        function createFrostTexture() {
-            const canvas = document.createElement('canvas'); 
-            canvas.width = 256; canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#666'; ctx.fillRect(0,0,256,256);
-            for(let i=0; i<80; i++) {
-                ctx.strokeStyle = `rgba(255,255,255,${0.2 + Math.random()*0.5})`;
-                ctx.lineWidth = Math.random() * 2 + 0.5;
-                ctx.beginPath();
-                const x = Math.random()*256, y = Math.random()*256;
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + (Math.random()-0.5)*60, y + (Math.random()-0.5)*60);
-                ctx.stroke();
-            }
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-            return tex;
-        }
-
         function createTextures() {
-            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,128,128);
-            ctx.fillStyle = '#aa0000'; ctx.beginPath();
-            for(let i=-128; i<256; i+=32) { ctx.moveTo(i, 0); ctx.lineTo(i+32, 128); ctx.lineTo(i+16, 128); ctx.lineTo(i-16, 0); }
-            ctx.fill();
-            caneTexture = new THREE.CanvasTexture(canvas);
-            caneTexture.colorSpace = THREE.SRGBColorSpace;
-            caneTexture.wrapS = THREE.RepeatWrapping; caneTexture.wrapT = THREE.RepeatWrapping;
-            caneTexture.repeat.set(3, 3);
-
-            const snowCvs = document.createElement('canvas'); snowCvs.width = 32; snowCvs.height = 32;
-            const sCtx = snowCvs.getContext('2d');
-            const grad = sCtx.createRadialGradient(16,16,0, 16,16,16);
-            grad.addColorStop(0, 'rgba(255,255,255,1)');
-            grad.addColorStop(1, 'rgba(255,255,255,0)');
-            sCtx.fillStyle = grad; sCtx.fillRect(0,0,32,32);
-            snowTexture = new THREE.CanvasTexture(snowCvs);
-
             const hCvs = document.createElement('canvas'); hCvs.width = 64; hCvs.height = 64;
             const hCtx = hCvs.getContext('2d');
             hCtx.fillStyle = '#ffffff';
@@ -331,47 +295,15 @@
 
         function createMaterials() {
             matLib.gold = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.15, envMapIntensity: 2.5, emissive: 0x664400, emissiveIntensity: 0.2 });
-            matLib.green = new THREE.MeshStandardMaterial({ color: CONFIG.colors.green, metalness: 0.4, roughness: 0.3, emissive: 0x001100, emissiveIntensity: 0.1 });
-            matLib.red = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.red, metalness: 0.6, roughness: 0.2, clearcoat: 1.0, emissive: 0x330000, emissiveIntensity: 0.4 });
-            matLib.candy = new THREE.MeshStandardMaterial({ map: caneTexture, roughness: 0.3, metalness: 0.1, emissive: 0x222222 });
+            matLib.pinkMain = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.pinkHot, metalness: 0.25, roughness: 0.15, clearcoat: 1.0, emissive: 0x440022, emissiveIntensity: 0.3 });
+            matLib.pinkSoft = new THREE.MeshStandardMaterial({ color: CONFIG.colors.pinkSoft, metalness: 0.1, roughness: 0.4, emissive: 0x442233, emissiveIntensity: 0.2 });
             matLib.starGold = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xffaa00, emissiveIntensity: 2.0, metalness: 1.0, roughness: 0 });
             matLib.frameGold = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.2 });
-
-            const frostTex = createFrostTexture();
-            matLib.ice = new THREE.MeshPhysicalMaterial({ 
-                color: 0xffffff, metalness: 0.1, roughness: 0.05, 
-                transmission: 0.95, thickness: 1.5, ior: 1.8, 
-                clearcoat: 1.0, envMapIntensity: 2.0,
-                iridescence: 1.0, iridescenceIOR: 1.3, iridescenceThicknessRange: [100, 400],
-                emissive: CONFIG.colors.iceBlue, emissiveIntensity: 0.3 
-            });
-            matLib.frozenCyan = new THREE.MeshPhysicalMaterial({
-                color: CONFIG.colors.iceCyan, metalness: 0.8, roughness: 0.2,
-                emissive: CONFIG.colors.iceCyan, emissiveIntensity: 2.0,
-                clearcoat: 1.0
-            });
-            matLib.frozenMagenta = new THREE.MeshPhysicalMaterial({
-                color: CONFIG.colors.iceMagenta, metalness: 0.5, roughness: 0.2,
-                emissive: CONFIG.colors.iceMagenta, emissiveIntensity: 1.5,
-                clearcoat: 1.0
-            });
-            matLib.starIce = new THREE.MeshPhysicalMaterial({ 
-                color: CONFIG.colors.iceCyan, emissive: 0xffffff, emissiveIntensity: 3.0, 
-                metalness: 0.2, roughness: 0, transmission: 0.6, thickness: 3.0 
-            });
-            matLib.snow = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.8, emissive: 0xaaaaaa, emissiveIntensity: 0.8 });
-            
-            matLib.barbieMain = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.barbieHot, metalness: 0.2, roughness: 0.1, clearcoat: 1.0, emissive: 0x440022, emissiveIntensity: 0.3 });
-            matLib.barbieSoft = new THREE.MeshStandardMaterial({ color: CONFIG.colors.barbieSoft, metalness: 0.1, roughness: 0.4, emissive: 0x442233, emissiveIntensity: 0.2 });
-            matLib.pearl = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.9, roughness: 0.1, transmission: 0.1, clearcoat: 1.0, iridescence: 1.0, iridescenceIOR: 1.3 });
-            matLib.starBarbie = new THREE.MeshStandardMaterial({ color: CONFIG.colors.barbieHot, emissive: 0xff0088, emissiveIntensity: 4.0, metalness: 0.5, roughness: 0.1 });
-            matLib.frameBarbie = matLib.barbieMain;
+            matLib.framePink = new THREE.MeshStandardMaterial({ color: CONFIG.colors.pinkHot, metalness: 0.4, roughness: 0.25, emissive: 0x330018, emissiveIntensity: 0.25 });
 
             matLib.snowBorder = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.BackSide });
-            matLib.frameIce = matLib.ice;
             matLib.dust = new THREE.MeshBasicMaterial({ color: 0xffffee, blending: THREE.AdditiveBlending });
-            matLib.snowFlake = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8, map: snowTexture, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
-            matLib.heartFlake = new THREE.PointsMaterial({ color: CONFIG.colors.barbieHot, size: 1.5, map: heartTexture, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+            matLib.heartFlake = new THREE.PointsMaterial({ color: CONFIG.colors.pinkHot, size: 1.4, map: heartTexture, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
         }
 
         class Particle {
@@ -384,16 +316,18 @@
             }
 
             calculatePositions() {
-                const h = CONFIG.particles.treeHeight; let t = Math.random();
-                if (Math.random() > 0.7 && !this.isDust && this.type !== 'PHOTO') {
-                    const y = (t * h) - h/2, angle = t * Math.PI * 12, rBase = CONFIG.particles.treeRadius * (1.0 - t);
-                    this.posTree.set(Math.cos(angle) * rBase, y, Math.sin(angle) * rBase);
-                } else {
-                    t = Math.pow(t, 0.8); const y = (t * h) - h/2, angle = Math.random() * Math.PI * 2, r = Math.max(0.5, CONFIG.particles.treeRadius * (1.0 - t)) * Math.sqrt(Math.random());
-                    this.posTree.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
-                }
-                const rScatter = this.isDust ? (15 + Math.random()*25) : (10 + Math.random()*15);
-                const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+                const h = CONFIG.particles.lanternHeight;
+                let t = Math.random();
+                t = Math.pow(t, 0.85);
+                const y = (t * h) - h / 2;
+                const theta = Math.random() * Math.PI * 2;
+                const profile = Math.sin(Math.PI * t);
+                const radius = CONFIG.particles.lanternRadius * (0.35 + 0.65 * profile);
+                const r = radius * Math.sqrt(Math.random());
+                this.posTree.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+
+                const rScatter = this.isDust ? (15 + Math.random() * 25) : (10 + Math.random() * 15);
+                const phi = Math.acos(2 * Math.random() - 1);
                 this.posScatter.set(rScatter * Math.sin(phi) * Math.cos(theta), rScatter * Math.sin(phi) * Math.sin(theta), rScatter * Math.cos(phi));
             }
 
@@ -460,35 +394,14 @@
             bgGroup.add(galaxySystem);
         }
 
-        function createSnowBackground() {
-            const geometry = new THREE.BufferGeometry();
-            const count = CONFIG.particles.snowCount;
-            const pos = new Float32Array(count * 3);
-            const velocities = new Float32Array(count); 
-
-            for(let i=0; i<count; i++) {
-                pos[i*3] = (Math.random() - 0.5) * 100; 
-                pos[i*3+1] = (Math.random() - 0.5) * 100; 
-                pos[i*3+2] = (Math.random() - 0.5) * 60; 
-                velocities[i] = 1.0 + Math.random(); 
-            }
-
-            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 1));
-
-            snowSystem = new THREE.Points(geometry, matLib.snowFlake);
-            snowSystem.visible = false; 
-            bgGroup.add(snowSystem);
-        }
-
         function createHeartBackground() {
             const geometry = new THREE.BufferGeometry();
             const count = 1500;
             const pos = new Float32Array(count * 3);
             const velocities = new Float32Array(count);
             const colors = new Float32Array(count * 3);
-            const c1 = new THREE.Color(CONFIG.colors.barbieHot);
-            const c2 = new THREE.Color(CONFIG.colors.barbieSoft);
+            const c1 = new THREE.Color(CONFIG.colors.pinkHot);
+            const c2 = new THREE.Color(CONFIG.colors.pinkSoft);
             const c3 = new THREE.Color(0xffffff);
 
             for(let i=0; i<count; i++) {
@@ -512,17 +425,15 @@
         }
 
         function createParticles() {
-            const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16), boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
-            const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0,-0.5,0), new THREE.Vector3(0,0.3,0), new THREE.Vector3(0.1,0.5,0), new THREE.Vector3(0.3,0.4,0)]);
-            const candyGeo = new THREE.TubeGeometry(curve, 8, 0.08, 6, false), dustGeo = new THREE.OctahedronGeometry(0.1, 0);
+            const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            const boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
+            const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
 
             for (let i = 0; i < CONFIG.particles.count; i++) {
                 const rand = Math.random(); let mesh, type;
-                if (rand < 0.35) { mesh = new THREE.Mesh(boxGeo, matLib.green); type = 'BOX'; } 
-                else if (rand < 0.70) { mesh = new THREE.Mesh(boxGeo, matLib.gold); type = 'GOLD_BOX'; } 
-                else if (rand < 0.90) { mesh = new THREE.Mesh(sphereGeo, matLib.gold); type = 'GOLD_SPHERE'; } 
-                else if (rand < 0.96) { mesh = new THREE.Mesh(sphereGeo, matLib.red); type = 'RED'; } 
-                else { mesh = new THREE.Mesh(candyGeo, matLib.candy); type = 'CANE'; }
+                if (rand < 0.45) { mesh = new THREE.Mesh(sphereGeo, matLib.gold); type = 'GOLD'; } 
+                else if (rand < 0.8) { mesh = new THREE.Mesh(boxGeo, matLib.pinkMain); type = 'PINK'; } 
+                else { mesh = new THREE.Mesh(boxGeo, matLib.pinkSoft); type = 'PINK_SOFT'; }
                 const s = 0.4 + Math.random() * 0.4; mesh.scale.set(s,s,s);
                 mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
                 mainGroup.add(mesh); particleSystem.push(new Particle(mesh, type, false));
@@ -531,18 +442,43 @@
                 const mesh = new THREE.Mesh(dustGeo, matLib.dust); mesh.scale.setScalar(0.5 + Math.random());
                 mainGroup.add(mesh); particleSystem.push(new Particle(mesh, 'DUST', true));
             }
-            createStarTopper();
+            createLanternTopper();
         }
 
-        function createStarTopper() {
-            const star = new THREE.Mesh(new THREE.OctahedronGeometry(1.5, 0), matLib.starGold);
-            star.position.set(0, CONFIG.particles.treeHeight/2 + 1.2, 0);
-            const halo = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshBasicMaterial({ 
+        function createLanternTopper() {
+            const topper = new THREE.Group();
+            const capGeo = new THREE.CylinderGeometry(1.6, 1.2, 1.2, 24);
+            const cap = new THREE.Mesh(capGeo, matLib.gold);
+            cap.position.set(0, CONFIG.particles.lanternHeight / 2 + 1.1, 0);
+            topper.add(cap);
+
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.12, 12, 24), matLib.gold);
+            ring.position.set(0, CONFIG.particles.lanternHeight / 2 + 2.0, 0);
+            ring.rotation.x = Math.PI / 2;
+            topper.add(ring);
+
+            const bottomCap = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.1, 0.8, 24), matLib.gold);
+            bottomCap.position.set(0, -CONFIG.particles.lanternHeight / 2 - 1.0, 0);
+            topper.add(bottomCap);
+
+            const tasselGroup = new THREE.Group();
+            for (let i = 0; i < 5; i++) {
+                const bead = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), matLib.pinkMain);
+                bead.position.set(0, -CONFIG.particles.lanternHeight / 2 - 1.7 - i * 0.4, 0);
+                tasselGroup.add(bead);
+            }
+            topper.add(tasselGroup);
+
+            const halo = new THREE.Mesh(new THREE.PlaneGeometry(7, 7), new THREE.MeshBasicMaterial({ 
                 map: new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/glow.png'), 
-                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5, color: 0xffaa00 
+                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.4, color: 0xffcc77 
             }));
-            star.add(halo); starGroup.add(star);
-            STATE.starMesh = star; STATE.starHaloMesh = halo; 
+            halo.position.set(0, CONFIG.particles.lanternHeight / 2 + 1.1, 0);
+            topper.add(halo);
+
+            starGroup.add(topper);
+            STATE.starMesh = cap;
+            STATE.starHaloMesh = halo; 
         }
 
         function switchTheme(themeIndex) {
@@ -554,28 +490,23 @@
                     titleEl.style.color = '#d4af37';
                     titleEl.style.textShadow = '0 0 15px rgba(212, 175, 55, 0.4), 0 0 30px rgba(212, 175, 55, 0.2)';
                 } else if (themeIndex === 1) { 
-                    titleEl.style.color = '#e0ffff';
-                    titleEl.style.textShadow = '0 0 15px rgba(0, 255, 255, 0.6), 0 0 30px rgba(0, 255, 255, 0.4), 0 0 45px rgba(170, 221, 255, 0.3)';
-                } else if (themeIndex === 2) { 
                     titleEl.style.color = '#ff69b4';
                     titleEl.style.textShadow = '0 0 15px rgba(255, 22, 148, 0.6), 0 0 30px rgba(255, 183, 197, 0.4)';
                 }
             }
             
-            renderer.toneMappingExposure = (themeIndex === 1) ? 1.2 : (themeIndex === 2 ? 0.9 : 1.0);
+            renderer.toneMappingExposure = (themeIndex === 1) ? 0.9 : 1.0;
             
             if (galaxySystem) galaxySystem.visible = (themeIndex === 0);
-            if (snowSystem) snowSystem.visible = (themeIndex === 1);
-            if (heartSystem) heartSystem.visible = (themeIndex === 2);
+            if (heartSystem) heartSystem.visible = (themeIndex === 1);
 
-            const fogColor = (themeIndex === 2) ? 0x1a0510 : ((themeIndex === 1) ? 0x000510 : CONFIG.colors.bg);
+            const fogColor = (themeIndex === 1) ? 0x1a0510 : CONFIG.colors.bg;
             scene.fog.color.setHex(fogColor); 
             scene.background.setHex(fogColor);
 
             particleSystem.forEach(p => {
                 if (p.isDust) {
-                    if (themeIndex === 2) p.mesh.material.color.setHex(CONFIG.colors.barbieSoft);
-                    else if (themeIndex === 1) p.mesh.material.color.setHex(CONFIG.colors.iceCyan); 
+                    if (themeIndex === 1) p.mesh.material.color.setHex(CONFIG.colors.pinkSoft);
                     else p.mesh.material.color.setHex(0xffffee);
                     return;
                 }
@@ -584,8 +515,7 @@
                     const group = p.mesh;
                     let frameMat;
                     if(themeIndex === 0) frameMat = matLib.frameGold;
-                    else if(themeIndex === 1) frameMat = matLib.frameIce; 
-                    else frameMat = matLib.frameBarbie;
+                    else frameMat = matLib.framePink;
 
                     if (group.children[0]) group.children[0].material = frameMat;
                     if (group.children[2]) group.children[2].visible = (themeIndex !== 0); 
@@ -594,20 +524,13 @@
 
                 let newMat;
                 if (themeIndex === 0) { 
-                    if(p.type.includes('GOLD')) newMat = matLib.gold;
-                    else if(p.type === 'BOX') newMat = matLib.green;
-                    else if(p.type === 'RED') newMat = matLib.red;
-                    else if(p.type === 'CANE') newMat = matLib.candy;
+                    if(p.type === 'GOLD') newMat = matLib.gold;
+                    else if(p.type === 'PINK') newMat = matLib.pinkMain;
+                    else if(p.type === 'PINK_SOFT') newMat = matLib.pinkSoft;
                 } else if (themeIndex === 1) { 
-                    if(p.type === 'GOLD_SPHERE') newMat = matLib.frozenCyan; 
-                    else if(p.type === 'GOLD_BOX' || p.type === 'BOX') newMat = matLib.ice; 
-                    else if(p.type === 'RED') newMat = matLib.frozenMagenta; 
-                    else if(p.type === 'CANE') newMat = matLib.snow; 
-                } else if (themeIndex === 2) { 
-                    if(p.type.includes('GOLD')) newMat = matLib.barbieMain; 
-                    else if(p.type === 'BOX') newMat = matLib.barbieSoft; 
-                    else if(p.type === 'RED') newMat = matLib.pearl; 
-                    else if(p.type === 'CANE') newMat = matLib.barbieMain; 
+                    if(p.type === 'GOLD') newMat = matLib.pinkMain; 
+                    else if(p.type === 'PINK') newMat = matLib.pinkMain; 
+                    else if(p.type === 'PINK_SOFT') newMat = matLib.pinkSoft; 
                 }
                 
                 if (newMat) p.mesh.material = newMat;
@@ -617,12 +540,9 @@
                 if(themeIndex === 0) {
                     STATE.starMesh.material = matLib.starGold;
                     STATE.starHaloMesh.material.color.setHex(0xffaa00);
-                } else if(themeIndex === 1) {
-                    STATE.starMesh.material = matLib.starIce;
-                    STATE.starHaloMesh.material.color.setHex(CONFIG.colors.iceCyan);
                 } else {
-                    STATE.starMesh.material = matLib.starBarbie;
-                    STATE.starHaloMesh.material.color.setHex(CONFIG.colors.barbieHot);
+                    STATE.starMesh.material = matLib.pinkMain;
+                    STATE.starHaloMesh.material.color.setHex(CONFIG.colors.pinkHot);
                 }
             }
         }
@@ -637,8 +557,7 @@
             
             let currentFrameMat;
             if (STATE.currentThemeIndex === 0) currentFrameMat = matLib.frameGold;
-            else if (STATE.currentThemeIndex === 1) currentFrameMat = matLib.frameIce;
-            else currentFrameMat = matLib.frameBarbie;
+            else currentFrameMat = matLib.framePink;
 
             const frame = new THREE.Mesh(frameGeo, currentFrameMat);
             group.add(frame);
@@ -700,7 +619,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = "tree.json";
+            a.download = "lantern.json";
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -867,7 +786,7 @@
             if (isOldSwitchGesture || isThumbsUpGesture) {
                 if (STATE.isGestureSwitchEnabled) {
                     if (Date.now() - STATE.gestureDebounceTimer > 2000) { 
-                        switchTheme((STATE.currentThemeIndex + 1) % 3); 
+                        switchTheme((STATE.currentThemeIndex + 1) % 2); 
                         STATE.gestureDebounceTimer = Date.now(); 
                     }
                 }
@@ -928,14 +847,14 @@
             
             if (galaxySystem && galaxySystem.visible) {
                 bgGroup.rotation.y -= 0.05 * dt; 
-            } else if ((snowSystem && snowSystem.visible) || (heartSystem && heartSystem.visible)) {
-                const sys = snowSystem.visible ? snowSystem : heartSystem;
+            } else if (heartSystem && heartSystem.visible) {
+                const sys = heartSystem;
                 const positions = sys.geometry.attributes.position.array;
                 const velocities = sys.geometry.attributes.velocity.array;
-                const count = (snowSystem.visible) ? CONFIG.particles.snowCount : 1500;
+                const count = 1500;
                 
                 for(let i=0; i<count; i++) {
-                    positions[i*3+1] -= CONFIG.particles.snowSpeed * velocities[i] * dt;
+                    positions[i*3+1] -= 8 * velocities[i] * dt;
                     if (positions[i*3+1] < -50) {
                         positions[i*3+1] = 50;
                     }
@@ -990,7 +909,9 @@
             
             document.addEventListener('fullscreenchange', () => { 
                 const isFs = !!document.fullscreenElement;
-                fsBtn.textContent = isFs ? '取消全屏' : '全屏显示'; 
+                const label = isFs ? '取消全屏' : '全屏显示';
+                const labelSpan = fsBtn.querySelector('span');
+                if (labelSpan) labelSpan.textContent = label;
                 
                 const colMedia = document.getElementById('col-media');
                 const btnImport = document.getElementById('btn-import');

@@ -1009,17 +1009,6 @@ const neck = CONFIG.lantern.skeletonNeckRadius ?? (baseNeck * 0.95);
             botCap.userData.sampleTag = "HARDWARE";
             skeleton.add(botCap);
 
-            const ballGeo = new THREE.SphereGeometry(0.35, 18, 18);
-            const topBall = new THREE.Mesh(ballGeo, redMat);
-            topBall.position.y = half + capH * 1.25;
-            topBall.userData.sampleTag = "HARDWARE";
-            skeleton.add(topBall);
-
-            const bottomBall = new THREE.Mesh(ballGeo, redMat);
-            bottomBall.position.y = -half - capH * 1.2;
-            bottomBall.userData.sampleTag = "HARDWARE";
-            skeleton.add(bottomBall);
-
             // --- 5) Stick (底部竖杆) ---
             // 你参考图里是长柄（不是传统流苏），这里按“长柄+下端线束”做
             const stickLen = CONFIG.lantern.stickLen ?? 10.5;
@@ -1030,7 +1019,8 @@ const stickStripes = CONFIG.lantern.stickStripes ?? 12;              // 条纹�
 const stripeRadius = CONFIG.lantern.stickStripeRadius ?? (stickR * 0.22);
 const stripeOffset = CONFIG.lantern.stickStripeOffset ?? (stickR * 0.78);
 
-const stickCenterY = bottomBall.position.y - stickLen / 2 - 0.15;
+const stickBottomAnchorY = -half - capH * 1.2; // match previous knob position for continuity
+const stickCenterY = stickBottomAnchorY - stickLen / 2 - 0.15;
 
 const stickGroup = new THREE.Group();
 stickGroup.name = "StickStripes";

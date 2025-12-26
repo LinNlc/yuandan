@@ -68,7 +68,6 @@
         }
 
         #loader { position: absolute; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 1.2s; pointer-events: none; }
-        #loader-content { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; color: var(--ui-gold); font-size: 14px; line-height: 1.5; padding: 0 16px; }
         .spinner { width: 40px; height: 40px; border: 2px solid rgba(243, 188, 108, 0.2); border-top: 2px solid var(--ui-gold); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -179,12 +178,7 @@
 </head>
 
 <body>
-    <div id="loader">
-        <div id="loader-content">
-            <div class="spinner" aria-hidden="true"></div>
-            <div>请耐心等待，正在载入资源文件…<br>启用摄像头仅在本地处理，不会上传云端。</div>
-        </div>
-    </div>
+    <div id="loader"><div class="spinner"></div></div>
     <div id="canvas-container"></div>
 
     <div id="ui-layer">
@@ -408,8 +402,7 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             letters: [],
             quality: {
                 preset: 'ultra',
-                settings: { ...QUALITY_PRESETS.ultra },
-                loadedFromStorage: false
+                settings: { ...QUALITY_PRESETS.ultra }
             }
         };
 
@@ -418,12 +411,6 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         let emberSystem = null;
         let sparkSystem = null;
         let petalSystem = null;
-
-        const PERFORMANCE_STATE = {
-            samples: [],
-            initialEvaluated: false,
-            lastAdjustment: 0
-        };
 
         let outlineOrbSystem = null;
         let handLandmarker, video, drawingUtils, canvasCtx;
@@ -1837,16 +1824,6 @@ for (let i = 0; i < stickStripes; i++) {
             return Math.min(Math.max(value, min), max);
         }
 
-        function pickAdaptivePreset() {
-            const cores = navigator.hardwareConcurrency || 4;
-            const memory = navigator.deviceMemory || 4;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-            if (cores <= 3 || memory <= 3) return 'medium';
-            if (dpr > 1.3 && (cores <= 4 || memory <= 4)) return 'high';
-            if (dpr > 1.6 && memory <= 6) return 'high';
-            return 'ultra';
-        }
-
         function normalizeQualitySettings(settings = {}) {
             return {
                 particleCount: clamp(Number(settings.particleCount ?? QUALITY_PRESETS.medium.particleCount), ...QUALITY_LIMITS.particleCount),
@@ -1861,34 +1838,6 @@ for (let i = 0; i < stickStripes; i++) {
         function getPixelRatio(scale) {
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             return Math.min(dpr * scale, 2.5);
-        }
-
-        function downgradeQuality({ preferPreset = false, severe = false } = {}) {
-            const order = ['ultra', 'high', 'medium', 'low'];
-            const currentIndex = order.indexOf(STATE.quality.preset);
-            const minIndex = order.indexOf('medium');
-            if (preferPreset && currentIndex >= 0 && currentIndex < minIndex) {
-                const nextPreset = order[Math.min(minIndex, currentIndex + 1)];
-                STATE.quality.preset = nextPreset;
-                const base = QUALITY_PRESETS[nextPreset];
-                applyQualitySettings({ ...base, bloomStrength: base.bloomStrength * (severe ? 0.9 : 1.0) }, { save: true, rebuild: true, updateUI: true });
-                return;
-            }
-
-            const scale = severe ? 0.78 : 0.88;
-            const bloomScale = severe ? 0.74 : 0.86;
-            const current = STATE.quality.settings || QUALITY_PRESETS.ultra;
-            const target = {
-                ...current,
-                particleCount: Math.round(current.particleCount * scale),
-                dustCount: Math.round(current.dustCount * scale),
-                bgCount: Math.round(current.bgCount * scale),
-                orbCount: Math.round(current.orbCount * scale),
-                renderScale: current.renderScale * Math.sqrt(scale),
-                bloomStrength: current.bloomStrength * bloomScale
-            };
-            STATE.quality.preset = 'custom';
-            applyQualitySettings(target, { save: true, rebuild: true, updateUI: true });
         }
 
         function applyQualitySettings(settings, { save = true, rebuild = true, updateUI = false } = {}) {
@@ -2029,7 +1978,6 @@ for (let i = 0; i < stickStripes; i++) {
                     if (data && typeof data === 'object') {
                         if (data.preset && QUALITY_PRESETS[data.preset]) {
                             STATE.quality.preset = data.preset;
-                            STATE.quality.loadedFromStorage = true;
                         }
                         if (data.settings && typeof data.settings === 'object') {
                             const basePreset = QUALITY_PRESETS[STATE.quality.preset] || QUALITY_PRESETS.ultra;
@@ -2037,7 +1985,6 @@ for (let i = 0; i < stickStripes; i++) {
                                 ...basePreset,
                                 ...data.settings
                             });
-                            STATE.quality.loadedFromStorage = true;
                             return;
                         }
                     }
@@ -2046,12 +1993,7 @@ for (let i = 0; i < stickStripes; i++) {
                 console.warn('quality load failed', err);
             }
 
-            if (!STATE.quality.loadedFromStorage) {
-                STATE.quality.preset = pickAdaptivePreset();
-                STATE.quality.settings = normalizeQualitySettings(QUALITY_PRESETS[STATE.quality.preset] || QUALITY_PRESETS.ultra);
-            } else {
-                STATE.quality.settings = normalizeQualitySettings(QUALITY_PRESETS[STATE.quality.preset] || QUALITY_PRESETS.ultra);
-            }
+            STATE.quality.settings = normalizeQualitySettings(QUALITY_PRESETS[STATE.quality.preset] || QUALITY_PRESETS.ultra);
         }
 
         function setSettingsOpen(open) {
@@ -2190,6 +2132,16 @@ for (let i = 0; i < stickStripes; i++) {
                     return imageExts.some(ext => lower.endsWith(ext));
                 })
                 .map((href) => new URL(href, baseUrl).toString());
+        }
+
+        function dedupeUrls(list) {
+            const seen = new Set();
+            return list.filter((item) => {
+                const key = String(item);
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
         }
 
         function normalizePhotoUrls(raw) {
@@ -2622,28 +2574,6 @@ const isThumbsUpGesture = isThumbExtended && (curledCount >= 3) && dist(4,8) > 0
             }
         }
 
-        function monitorPerformance(dt) {
-            if (!Number.isFinite(dt) || dt <= 0) return;
-            PERFORMANCE_STATE.samples.push(dt);
-            if (PERFORMANCE_STATE.samples.length > 45) PERFORMANCE_STATE.samples.shift();
-            const avgDt = PERFORMANCE_STATE.samples.reduce((a, b) => a + b, 0) / PERFORMANCE_STATE.samples.length;
-            const fps = avgDt > 0 ? 1 / avgDt : 60;
-
-            if (!PERFORMANCE_STATE.initialEvaluated && clock.elapsedTime > 1.0) {
-                PERFORMANCE_STATE.initialEvaluated = true;
-                if (!STATE.quality.loadedFromStorage && fps < 55 && STATE.quality.preset === 'ultra') {
-                    downgradeQuality({ preferPreset: true, severe: fps < 42 });
-                    return;
-                }
-            }
-
-            const now = performance.now();
-            if (fps < 45 && (now - PERFORMANCE_STATE.lastAdjustment > 2000)) {
-                downgradeQuality({ severe: fps < 35 });
-                PERFORMANCE_STATE.lastAdjustment = now;
-            }
-        }
-
         
         function updateLanternOrbs(dt) {
             if (!outlineOrbSystem || !outlineOrbSystem.geometry || !outlineOrbSystem.geometry.attributes) return;
@@ -2742,7 +2672,6 @@ function animate() {
                 bloomPass.radius += (targetRadius - bloomPass.radius) * 0.18;
             }
             composer.render();
-            monitorPerformance(dt);
         }
 
         function setupEvents() {

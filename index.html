@@ -300,10 +300,10 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         };
 
         const QUALITY_PRESETS = {
-            low: { particleCount: 750, dustCount: 520, bgCount: 820, orbCount: 780, renderScale: 0.9, bloomStrength: 0.4 },
-            medium: { particleCount: 1200, dustCount: 850, bgCount: 1350, orbCount: 1200, renderScale: 1.0, bloomStrength: 0.55 },
-            high: { particleCount: 1650, dustCount: 1180, bgCount: 1850, orbCount: 1550, renderScale: 1.05, bloomStrength: 0.8 },
-            ultra: { particleCount: 2100, dustCount: 1500, bgCount: 2400, orbCount: 1800, renderScale: 1.1, bloomStrength: 1.1 }
+            low: { particleCount: 520, dustCount: 520, bgCount: 820, orbCount: 780, renderScale: 0.9, bloomStrength: 0.4 },
+            medium: { particleCount: 900, dustCount: 850, bgCount: 1350, orbCount: 1200, renderScale: 1.0, bloomStrength: 0.55 },
+            high: { particleCount: 1250, dustCount: 1180, bgCount: 1850, orbCount: 1550, renderScale: 1.05, bloomStrength: 0.8 },
+            ultra: { particleCount: 1600, dustCount: 1500, bgCount: 2400, orbCount: 1800, renderScale: 1.1, bloomStrength: 1.1 }
         };
 
         const QUALITY_LIMITS = {
@@ -431,6 +431,7 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         let isPredicting = false;
         let lanternTexture, coupletTexture, emberTexture, petalTexture, glowTexture, matLib = {};
         let qualityApplyTimer = null;
+        let tasselStrands = [];
         
         const _tempVec = new THREE.Vector3();
         const _targetVec = new THREE.Vector3();
@@ -1009,17 +1010,6 @@ const neck = CONFIG.lantern.skeletonNeckRadius ?? (baseNeck * 0.95);
             botCap.userData.sampleTag = "HARDWARE";
             skeleton.add(botCap);
 
-            const ballGeo = new THREE.SphereGeometry(0.35, 18, 18);
-            const topBall = new THREE.Mesh(ballGeo, redMat);
-            topBall.position.y = half + capH * 1.25;
-            topBall.userData.sampleTag = "HARDWARE";
-            skeleton.add(topBall);
-
-            const bottomBall = new THREE.Mesh(ballGeo, redMat);
-            bottomBall.position.y = -half - capH * 1.2;
-            bottomBall.userData.sampleTag = "HARDWARE";
-            skeleton.add(bottomBall);
-
             // --- 5) Stick (底部竖杆) ---
             // 你参考图里是长柄（不是传统流苏），这里按“长柄+下端线束”做
             const stickLen = CONFIG.lantern.stickLen ?? 10.5;
@@ -1030,41 +1020,48 @@ const stickStripes = CONFIG.lantern.stickStripes ?? 12;              // 条纹�
 const stripeRadius = CONFIG.lantern.stickStripeRadius ?? (stickR * 0.22);
 const stripeOffset = CONFIG.lantern.stickStripeOffset ?? (stickR * 0.78);
 
-const stickCenterY = bottomBall.position.y - stickLen / 2 - 0.15;
+const stickBottomAnchorY = -half - capH * 1.2; // match previous knob position for continuity
+const stickCenterY = stickBottomAnchorY - stickLen / 2 - 0.15;
 
 const stickGroup = new THREE.Group();
 stickGroup.name = "StickStripes";
 stickGroup.position.y = stickCenterY;
 skeleton.add(stickGroup);
 
-// 直线曲线（局部坐标，围绕y轴）
-const stickCurve = new THREE.LineCurve3(
-    new THREE.Vector3(0, stickLen / 2, 0),
-    new THREE.Vector3(0, -stickLen / 2, 0)
-);
+// 改为一圈飘动的红色丝线，弱化硬质竖杆感
+const tasselRoot = new THREE.Group();
+tasselRoot.position.y = stickBottomAnchorY - 0.35;
+skeleton.add(tasselRoot);
 
-const stickTubeSeg = 20;
-const stickRadSeg = 8;
-
-for (let i = 0; i < stickStripes; i++) {
-    const a = (i / stickStripes) * Math.PI * 2;
-    const tubeGeo = new THREE.TubeGeometry(stickCurve, stickTubeSeg, stripeRadius, stickRadSeg, false);
-    const tube = new THREE.Mesh(tubeGeo, frameMat);
-    tube.position.set(Math.cos(a) * stripeOffset, 0, Math.sin(a) * stripeOffset);
-    tube.userData.sampleTag = "STICK";
-    stickGroup.add(tube);
+tasselStrands = [];
+const tasselLen = CONFIG.lantern.tasselLen ?? 9.2;
+const strandCount = CONFIG.lantern.tasselThreads ?? 26;
+const strandGeo = new THREE.CylinderGeometry(0.07, 0.04, tasselLen, 6);
+for (let i = 0; i < strandCount; i++) {
+    const a = (i / strandCount) * Math.PI * 2;
+    const strand = new THREE.Mesh(strandGeo, redMat);
+    strand.position.set(Math.cos(a) * (stripeOffset * 1.25), -tasselLen * 0.5, Math.sin(a) * (stripeOffset * 1.25));
+    const baseTiltX = -0.35 + (Math.random() - 0.5) * 0.15;
+    const baseTwistZ = (Math.random() - 0.5) * 0.25;
+    strand.rotation.x = baseTiltX;
+    strand.rotation.z = baseTwistZ;
+    strand.userData.baseTiltX = baseTiltX;
+    strand.userData.baseTwistZ = baseTwistZ;
+    strand.userData.sampleTag = "STICK";
+    tasselRoot.add(strand);
+    tasselStrands.push(strand);
 }
 // --- 6) Tassel / ribbon bundle (底部绸带/线束：让粒子轮廓“有尾巴”更像灯笼) ---
-            const tasselLen = CONFIG.lantern.tasselLen ?? 8.8;
-            const tasselTopY = stickCenterY - stickLen / 2 - 0.3;
+            const tasselTopY = stickBottomAnchorY - stickLen * 0.35;
 
             // 多根竖线（像参考图杆下端的纵向条纹/线束）
-            const threadCount = CONFIG.lantern.tasselThreads ?? 18;
-            const threadGeo = new THREE.CylinderGeometry(0.045, 0.045, tasselLen * 0.9, 6);
+            const threadCount = Math.max(8, Math.floor((CONFIG.lantern.tasselThreads ?? 26) * 0.55));
+            const threadGeo = new THREE.CylinderGeometry(0.045, 0.045, tasselLen * 0.82, 6);
             for (let i = 0; i < threadCount; i++) {
-                const th = new THREE.Mesh(threadGeo, frameMat);
+                const th = new THREE.Mesh(threadGeo, redMat);
                 const a = (i / threadCount) * Math.PI * 2;
-                th.position.set(Math.cos(a) * 0.35, tasselTopY - tasselLen * 0.45, Math.sin(a) * 0.35);
+                th.position.set(Math.cos(a) * 0.35, tasselTopY - tasselLen * 0.42, Math.sin(a) * 0.35);
+                th.rotation.z = (Math.random() - 0.5) * 0.18;
                 th.userData.sampleTag = "TASSEL";
                 skeleton.add(th);
             }
@@ -1275,20 +1272,6 @@ for (let i = 0; i < stickStripes; i++) {
                     _tempVec.y += Math.sin(time * this.speed + this.offset) * floatScale; 
                     _tempVec.x += Math.cos(time * 0.5 * this.speed + this.offset) * 0.08; 
                 }
-                if (this.instancedMesh) {
-                    const m = new THREE.Matrix4();
-                    this.instancedMesh.getMatrixAt(this.instancedIndex, m);
-                    const pos = new THREE.Vector3(); const rot = new THREE.Quaternion(); const sca = new THREE.Vector3();
-                    m.decompose(pos, rot, sca);
-                    pos.lerp(_tempVec, lerpSpeed * dt);
-                    sca.lerp(_tempVec.set(s,s,s), 5*dt);
-                    m.compose(pos, rot, sca);
-                    this.instancedMesh.setMatrixAt(this.instancedIndex, m);
-                    this.instancedMesh.instanceMatrix.needsUpdate = true;
-                } else {
-                    this.mesh.position.lerp(_tempVec, lerpSpeed * dt);
-                    this.mesh.scale.lerp(_tempVec.set(s,s,s), 5*dt);
-                }
 
                 if (this.hasEmissive && mode === 'TREE' && !this.isDust) {
                     const flicker = 0.6 + 0.4 * Math.sin(time * 2 + this.offset);
@@ -1302,6 +1285,21 @@ for (let i = 0; i < stickStripes; i++) {
                 if (mode === 'SCATTER' && !this.isDust && this.scatterScaleBonus > 0) {
                     const openAmt = THREE.MathUtils.clamp((STATE.scatterScale - 1.0) / 1.0, 0.0, 1.0);
                     s = this.baseScale * (1.0 + openAmt * this.scatterScaleBonus);
+                }
+
+                if (this.instancedMesh) {
+                    const m = new THREE.Matrix4();
+                    this.instancedMesh.getMatrixAt(this.instancedIndex, m);
+                    const pos = new THREE.Vector3(); const rot = new THREE.Quaternion(); const sca = new THREE.Vector3();
+                    m.decompose(pos, rot, sca);
+                    pos.lerp(_tempVec, lerpSpeed * dt);
+                    sca.lerp(_tempVec.set(s,s,s), 5*dt);
+                    m.compose(pos, rot, sca);
+                    this.instancedMesh.setMatrixAt(this.instancedIndex, m);
+                    this.instancedMesh.instanceMatrix.needsUpdate = true;
+                } else {
+                    this.mesh.position.lerp(_tempVec, lerpSpeed * dt);
+                    this.mesh.scale.lerp(_tempVec.set(s,s,s), 5*dt);
                 }
             }
         }
@@ -1432,7 +1430,7 @@ for (let i = 0; i < stickStripes; i++) {
                 const mesh = instancePools.find(m => m.userData.type === type);
                 const idx = instanceIndex[type];
                 if (idx < mesh.count) {
-                    const s = 0.4 + Math.random() * 0.5;
+                    const s = 0.72 + Math.random() * 0.55;
                     _m.identity();
                     _m.makeRotationFromEuler(new THREE.Euler(Math.random()*6, Math.random()*6, Math.random()*6));
                     _m.scale(new THREE.Vector3(s,s,s));
@@ -2713,6 +2711,16 @@ function animate() {
                 STATE.emblemMesh.rotation.y -= dt * 0.6;
                 STATE.emblemMesh.rotation.z = Math.sin(STATE.time) * 0.15;
                 STATE.emblemMesh.scale.setScalar(1.0 + Math.sin(STATE.time * 2) * 0.08);
+            }
+            if (tasselStrands && tasselStrands.length) {
+                const t = STATE.time;
+                for (let i = 0; i < tasselStrands.length; i++) {
+                    const strand = tasselStrands[i];
+                    const sway = Math.sin(t * 2.4 + i * 0.45) * 0.35;
+                    const drift = Math.cos(t * 1.8 + i * 0.32) * 0.18;
+                    strand.rotation.z = (strand.userData.baseTwistZ || 0) + sway * 0.6;
+                    strand.rotation.x = (strand.userData.baseTiltX || -0.3) - 0.1 + drift;
+                }
             }
             particleSystem.forEach(p => p.update(dt, STATE.time, STATE.mode, STATE.focusTarget, (STATE.mode === 'FOCUS' ? _invMatrix : null)));
             updateLanternOrbs(dt);

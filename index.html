@@ -300,10 +300,10 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         };
 
         const QUALITY_PRESETS = {
-            low: { particleCount: 750, dustCount: 520, bgCount: 820, orbCount: 620, renderScale: 0.9, bloomStrength: 0.4 },
-            medium: { particleCount: 1200, dustCount: 850, bgCount: 1350, orbCount: 980, renderScale: 1.0, bloomStrength: 0.55 },
-            high: { particleCount: 1650, dustCount: 1180, bgCount: 1850, orbCount: 1320, renderScale: 1.05, bloomStrength: 0.8 },
-            ultra: { particleCount: 2100, dustCount: 1500, bgCount: 2400, orbCount: 1500, renderScale: 1.1, bloomStrength: 1.1 }
+            low: { particleCount: 750, dustCount: 520, bgCount: 820, orbCount: 780, renderScale: 0.9, bloomStrength: 0.4 },
+            medium: { particleCount: 1200, dustCount: 850, bgCount: 1350, orbCount: 1200, renderScale: 1.0, bloomStrength: 0.55 },
+            high: { particleCount: 1650, dustCount: 1180, bgCount: 1850, orbCount: 1550, renderScale: 1.05, bloomStrength: 0.8 },
+            ultra: { particleCount: 2100, dustCount: 1500, bgCount: 2400, orbCount: 1800, renderScale: 1.1, bloomStrength: 1.1 }
         };
 
         const QUALITY_LIMITS = {
@@ -1416,7 +1416,8 @@ for (let i = 0; i < stickStripes; i++) {
 
             const _m = new THREE.Matrix4();
             const typePool = ['COUPLET','FIRECRACKER','KNOT','COIN','BEAD'];
-            const typeRanges = [0.25, 0.5, 0.72, 0.88, 1.0];
+            // Reduce FIRECRACKER/KNOT share while keeping variety
+            const typeRanges = [0.20, 0.32, 0.48, 0.75, 1.0];
 
             // Fill instanced meshes and track per-particle data
             let instanceIndex = { COUPLET:0, FIRECRACKER:0, KNOT:0, COIN:0, BEAD:0 };
@@ -1847,8 +1848,17 @@ for (let i = 0; i < stickStripes; i++) {
 
         function clearOrnaments() {
             const toRemove = particleSystem.filter(p => p.type !== 'PHOTO' && p.type !== 'LETTER');
+            const instancedSet = new Set();
             toRemove.forEach(p => {
-                mainGroup.remove(p.mesh);
+                if (p.instancedMesh) {
+                    instancedSet.add(p.instancedMesh);
+                } else {
+                    mainGroup.remove(p.mesh);
+                }
+            });
+            instancedSet.forEach(mesh => {
+                mainGroup.remove(mesh);
+                disposePoints(mesh);
             });
             particleSystem = particleSystem.filter(p => p.type === 'PHOTO' || p.type === 'LETTER');
         }

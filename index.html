@@ -234,7 +234,7 @@
                 <button class="chip" data-quality="high">高</button>
                 <button class="chip" data-quality="ultra">极高</button>
             </div>
-            <div class="panel-note">默认进入“极高”画质（灯笼粒子3000 / 光尘2400 / 背景粒子3600 / 渲染1.2x / 辉光1.4）。画质越高越吃性能。</div>
+            <div class="panel-note">默认进入“极高”画质（灯笼粒子3800 / 装饰球520 / 背景粒子1400 / 渲染1.1x / 辉光1.1）。画质越高越吃性能。</div>
         </div>
     </div>
 </div>
@@ -300,19 +300,19 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         };
 
         const QUALITY_PRESETS = {
-            low: { particleCount: 50, dustCount: 50, bgCount: 100, orbCount: 50, renderScale: 0.4, bloomStrength: 0.4 },
-            medium: { particleCount: 400, dustCount: 400, bgCount: 600, orbCount: 400, renderScale: 0.7, bloomStrength: 0.7 },
-            high: { particleCount: 600, dustCount: 600, bgCount: 800, orbCount: 600, renderScale: 0.9, bloomStrength: 0.9 },
-            ultra: { particleCount: 800, dustCount: 800, bgCount: 1000, orbCount: 800, renderScale: 1.0, bloomStrength: 1.0 }
+            low:   { particleCount: 1800, dustCount: 200, bgCount: 800,  orbCount: 220, renderScale: 0.85, bloomStrength: 0.75 },
+            medium:{ particleCount: 2400, dustCount: 320, bgCount: 1000, orbCount: 280, renderScale: 0.95, bloomStrength: 0.9 },
+            high:  { particleCount: 3200, dustCount: 420, bgCount: 1200, orbCount: 420, renderScale: 1.05, bloomStrength: 1.05 },
+            ultra: { particleCount: 3800, dustCount: 520, bgCount: 1400, orbCount: 520, renderScale: 1.1,  bloomStrength: 1.1 }
         };
 
         const QUALITY_LIMITS = {
-            particleCount: [200, 1000],
-            dustCount: [200, 1000],
-            bgCount: [200, 1000],
-            orbCount: [0, 1000],
-            renderScale: [0.4, 1.1],
-            bloomStrength: [0, 1.1]
+            particleCount: [1200, 4500],
+            dustCount: [0, 1200],
+            bgCount: [200, 2000],
+            orbCount: [0, 1200],
+            renderScale: [0.7, 1.2],
+            bloomStrength: [0, 1.2]
         };
 
         const THEMES = [
@@ -406,11 +406,12 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             rotation: { x: 0, y: 0 }, spinVel: { x: 0, y: 0 }, time: 0,
             wasOkGesture: false,
             wasThumbsUpGesture: false, palmCenter: { x: 0.5, y: 0.5 }, hasPalmCenter: false,
-            emblemMesh: null, emblemHaloMesh: null,
+            glowKnot: null,
+            pointerRipple: { active: false, pos: new THREE.Vector3(), strength: 0 },
             letters: [],
             quality: {
-                preset: 'high',
-                settings: { ...QUALITY_PRESETS.high }
+                preset: 'ultra',
+                settings: { ...QUALITY_PRESETS.ultra }
             }
         };
 
@@ -441,6 +442,10 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         const _instPos = new THREE.Vector3();
         const _instQuat = new THREE.Quaternion();
         const _instScale = new THREE.Vector3();
+        const _rippleVec = new THREE.Vector3();
+        const _raycaster = new THREE.Raycaster();
+        const _planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const RIPPLE = { radius: 6.8, force: 3.0 };
         
         // ====== Lantern mesh -> particle sampling (surface) ======
         // Particles will sample positions from the generated lantern mesh geometry.
@@ -448,11 +453,7 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         const _lanternSamplePos = new THREE.Vector3();
 
         const LANTERN_SAMPLE_WEIGHTS = [
-            ["RIB", 0.62],
-            ["HOOP", 0.18],
-            ["HARDWARE", 0.06],
-            ["STICK", 0.08],
-            ["TASSEL", 0.06],
+            ["BODY", 1.0]
         ];
 
         function _pickWeightedTag() {
@@ -527,7 +528,7 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         }
 
         function rebuildLanternSamplers() {
-            LANTERN_SAMPLERS = { RIB: [], HOOP: [], STICK: [], TASSEL: [], HARDWARE: [], BODY: [] };
+            LANTERN_SAMPLERS = { BODY: [] };
             if (!lanternGroup) return;
 
             // ensure matrices are current
@@ -557,8 +558,8 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             let bucket = (LANTERN_SAMPLERS[tag] && LANTERN_SAMPLERS[tag].length) ? LANTERN_SAMPLERS[tag] : null;
 
             if (!bucket || bucket.length === 0) {
-                // fall back to any available bucket (prefer RIB/HOOP to keep a clean skeleton)
-                const order = ["RIB", "HOOP", "HARDWARE", "STICK", "TASSEL", "BODY"];
+                // fall back to body sampling
+                const order = ["BODY"];
                 for (const k of order) {
                     if (LANTERN_SAMPLERS[k] && LANTERN_SAMPLERS[k].length) { bucket = LANTERN_SAMPLERS[k]; break; }
                 }
@@ -591,6 +592,7 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             createSparkBackground();
             createPetalBackground();
             createLanternBody();
+            createFloatingKnot();
             rebuildLanternSamplers();
             createParticles();
             switchTheme(STATE.currentThemeIndex, { save: false });
@@ -773,12 +775,49 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
                 emissive: baseTheme.lanternGlow,
                 emissiveIntensity: 0.55
             });
+            matLib.lanternCore = new THREE.MeshPhysicalMaterial({
+                color: baseTheme.lantern,
+                metalness: 0.15,
+                roughness: 0.32,
+                clearcoat: 0.8,
+                clearcoatRoughness: 0.24,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: 0.6
+            });
             matLib.lanternGold = new THREE.MeshStandardMaterial({
                 color: baseTheme.accent,
                 metalness: 1.0,
                 roughness: 0.2,
                 emissive: baseTheme.accentDeep,
                 emissiveIntensity: 0.4
+            });
+            matLib.decorGold = new THREE.MeshPhysicalMaterial({
+                color: 0xd6b06b,
+                metalness: 0.92,
+                roughness: 0.26,
+                emissive: 0x3a240d,
+                emissiveIntensity: 0.2
+            });
+            matLib.decorWine = new THREE.MeshPhysicalMaterial({
+                color: 0x7a0f1d,
+                metalness: 0.65,
+                roughness: 0.35,
+                emissive: 0x2c050c,
+                emissiveIntensity: 0.24
+            });
+            matLib.decorYellow = new THREE.MeshPhysicalMaterial({
+                color: 0xe8c15a,
+                metalness: 0.7,
+                roughness: 0.28,
+                emissive: 0x2c2108,
+                emissiveIntensity: 0.18
+            });
+            matLib.decorChampagne = new THREE.MeshPhysicalMaterial({
+                color: 0xd8cbb1,
+                metalness: 0.76,
+                roughness: 0.32,
+                emissive: 0x24190c,
+                emissiveIntensity: 0.18
             });
             matLib.knot = new THREE.MeshStandardMaterial({
                 color: baseTheme.knot,
@@ -869,243 +908,75 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             lanternGroup = new THREE.Group();
             lanternGroup.name = "LanternGroup";
 
-            // ============================================================
-            // Lantern "skeleton" inspired by common wireframe lantern models:
-            // meridian ribs + latitude hoops + top/bottom hardware + tassel
-            // (参考：常见灯笼线框结构/3D线框模型）
-            // ============================================================
-
-            // 说明：原始 CONFIG.lantern.height=24 会导致骨架呈现“瘦高”，因此骨架使用独立比例
-const baseRadius = CONFIG.lantern.radius ?? 3.2;
-const baseNeck = CONFIG.lantern.neckRadius ?? (baseRadius * 0.28);
-
-// 骨架外形参数：默认更“矮胖”更像灯笼（可在 CONFIG.lantern.* 覆盖）
-const skeletonAspect = CONFIG.lantern.skeletonAspect ?? 1.25; // height / radius（1.25~1.6较像传统灯笼）
-const radius = CONFIG.lantern.skeletonRadius ?? (baseRadius * (CONFIG.lantern.skeletonRadiusScale ?? 1.15));
-const h = CONFIG.lantern.skeletonHeight ?? (radius * skeletonAspect);
-const half = h / 2;
-const neck = CONFIG.lantern.skeletonNeckRadius ?? (baseNeck * 0.95);
-
-
-            const ribCount = CONFIG.lantern.ribCount ?? 16;
-            const hoopCount = CONFIG.lantern.hoopCount ?? 5;
-
-            const frameR = CONFIG.lantern.frameRadius ?? 0.09; // 骨架管径（采样后会表现成更“线框”）
-            const tubeSeg = Math.max(96, CONFIG.lantern.segments ?? 96);
-
-            // 轮廓函数：t=0..1（下->上）
-            // 让上下更收，中间更鼓，且整体更像你给的“卡通灯笼”图
-            const bulgePow = CONFIG.lantern.bulgePow ?? 0.56;  // 0.55~0.75
-            function yAt(t) { return (t - 0.5) * h; }
+            const baseRadius = CONFIG.lantern.radius ?? 9.5;
+            const height = CONFIG.lantern.height ?? 24;
+            const neckRadius = CONFIG.lantern.neckRadius ?? (baseRadius * 0.26);
+            const bulgePow = CONFIG.lantern.bulgePow ?? 0.62;
+            function yAt(t) { return (t - 0.5) * height; }
             function rAt(t) {
                 const s = Math.sin(Math.PI * t);
                 const bulge = Math.pow(Math.max(0, s), bulgePow);
-                return neck + (radius - neck) * bulge;
+                return neckRadius + (baseRadius - neckRadius) * bulge;
             }
 
-            // 材质：最终你看到的是粒子，但 mesh 仍用于采样
-            const frameMat = matLib?.lanternGold ?? new THREE.MeshStandardMaterial({
-                color: 0xffc84a,
-                roughness: 0.35,
-                metalness: 0.75,
-                emissive: 0x251200,
-                emissiveIntensity: 0.25
-            });
-
-            const redMat = matLib?.knot ?? new THREE.MeshStandardMaterial({
-                color: 0xd40000,
-                roughness: 0.75,
-                metalness: 0.05,
-                emissive: 0x200000,
-                emissiveIntensity: 0.35
-            });
-
-            // === Skeleton root: only sample from this subtree for a clean wireframe look ===
-            const skeleton = new THREE.Group();
-            skeleton.name = "LanternSkeleton";
-            lanternGroup.add(skeleton);
-            lanternGroup.userData.sampleRoot = skeleton;
-
-            // --- 1) Meridian ribs (纵向骨条) ---
-            // ribs从t0到t1（避开上下金属盖的空间）
+            const profile = [];
+            const steps = 40;
             const t0 = 0.08, t1 = 0.92;
-            // --- Sampling skin (隐形外壳): 用于让“照片/书信/小组件”可以在灯笼外壳面上乱序分布，而不仅沿骨架线条 ---
-            // 注意：此网格保持不可见，仅用于 MeshSurfaceSampler 采样
-            const skinProfile = [];
-            const skinSteps = 28;
-            for (let k = 0; k <= skinSteps; k++) {
-                const tt = t0 + (t1 - t0) * (k / skinSteps);
-                skinProfile.push(new THREE.Vector2(rAt(tt) * 1.02, yAt(tt)));
+            for (let i = 0; i <= steps; i++) {
+                const tt = t0 + (t1 - t0) * (i / steps);
+                profile.push(new THREE.Vector2(rAt(tt) * 1.05, yAt(tt)));
             }
-            const skinGeo = new THREE.LatheGeometry(skinProfile, Math.max(32, CONFIG.lantern.segments));
+            const skinGeo = new THREE.LatheGeometry(profile, Math.max(48, CONFIG.lantern.segments));
             const skinMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0, depthWrite: false });
             const skin = new THREE.Mesh(skinGeo, skinMat);
             skin.userData.sampleTag = "BODY";
             skin.visible = false;
-            skeleton.add(skin);
 
-            const ribSteps = 18;
-            const ribTubeR = frameR;
-            for (let i = 0; i < ribCount; i++) {
-                const ang = (i / ribCount) * Math.PI * 2;
-                const pts = [];
-                for (let k = 0; k <= ribSteps; k++) {
-                    const t = t0 + (t1 - t0) * (k / ribSteps);
-                    const y = yAt(t);
-                    const r = rAt(t);
-                    pts.push(new THREE.Vector3(Math.cos(ang) * r, y, Math.sin(ang) * r));
-                }
-                const curve = new THREE.CatmullRomCurve3(pts);
-                const geo = new THREE.TubeGeometry(curve, tubeSeg, ribTubeR, 6, false);
-                const rib = new THREE.Mesh(geo, frameMat);
-                rib.userData.sampleTag = "RIB";
-                skeleton.add(rib);
-            }
+            const scaffold = new THREE.Group();
+            scaffold.name = "LanternScaffold";
+            scaffold.add(skin);
+            lanternGroup.add(scaffold);
+            lanternGroup.userData.sampleRoot = scaffold;
 
-            // --- 2) Latitude hoops (横向箍) ---
-            // 让线框更像灯笼结构：中间更密，上下少一些
-            const hoopTs = [];
-            for (let j = 1; j <= hoopCount; j++) {
-                // 分布：更偏向中间（ease）
-                const u = j / (hoopCount + 1);
-                const eased = 0.5 - 0.5 * Math.cos(Math.PI * u); // 0..1
-                hoopTs.push(t0 + (t1 - t0) * eased);
-            }
-            const hoopTubeR = frameR * 0.95;
-            const hoopRadSeg = 10;
-            const hoopTubSeg = Math.max(64, Math.floor(tubeSeg * 0.75));
-            for (const t of hoopTs) {
-                const y = yAt(t);
-                const r = rAt(t);
-                const hoopGeo = new THREE.TorusGeometry(r, hoopTubeR, hoopRadSeg, hoopTubSeg);
-                const hoop = new THREE.Mesh(hoopGeo, frameMat);
-                hoop.position.y = y;
-                hoop.userData.sampleTag = "HOOP";
-                skeleton.add(hoop);
-            }
-
-            // --- 3) Top/Bottom rings (上/下金边) ---
-            const topRingT = 0.86, botRingT = 0.14;
-            const ringR = frameR * 1.25;
-            const ringGeoTop = new THREE.TorusGeometry(rAt(topRingT) + ringR * 0.65, ringR, 10, hoopTubSeg);
-            const topRing = new THREE.Mesh(ringGeoTop, frameMat);
-            topRing.position.y = yAt(topRingT);
-            topRing.userData.sampleTag = "HARDWARE";
-            skeleton.add(topRing);
-
-            const ringGeoBot = new THREE.TorusGeometry(rAt(botRingT) + ringR * 0.65, ringR, 10, hoopTubSeg);
-            const botRing = new THREE.Mesh(ringGeoBot, frameMat);
-            botRing.position.y = yAt(botRingT);
-            botRing.userData.sampleTag = "HARDWARE";
-            skeleton.add(botRing);
-
-            // --- 4) Caps + knobs (上下盖 + 小球) ---
-            const capH = CONFIG.lantern.capHeight ?? 0.55;
-            const capGeo = new THREE.CylinderGeometry(neck * 1.05, neck * 1.28, capH, 28);
-            const topCap = new THREE.Mesh(capGeo, frameMat);
-            topCap.position.y = half + capH * 0.55;
-            topCap.userData.sampleTag = "HARDWARE";
-            skeleton.add(topCap);
-
-            const botCap = new THREE.Mesh(capGeo, frameMat);
-            botCap.position.y = -half - capH * 0.55;
-            botCap.scale.set(1.05, 0.92, 1.05);
-            botCap.userData.sampleTag = "HARDWARE";
-            skeleton.add(botCap);
-
-            // --- 5) Stick (底部竖杆) ---
-            // 你参考图里是长柄（不是传统流苏），这里按“长柄+下端线束”做
-            const stickLen = CONFIG.lantern.stickLen ?? 10.5;
-const stickR = CONFIG.lantern.stickRadius ?? 0.28;
-
-// 将“单一圆柱杆”改为“多根竖向细 tube 组成的条纹杆骨架”
-const stickStripes = CONFIG.lantern.stickStripes ?? 12;              // 条纹数量
-const stripeRadius = CONFIG.lantern.stickStripeRadius ?? (stickR * 0.22);
-const stripeOffset = CONFIG.lantern.stickStripeOffset ?? (stickR * 0.78);
-
-const stickBottomAnchorY = -half - capH * 1.2; // match previous knob position for continuity
-const stickCenterY = stickBottomAnchorY - stickLen / 2 - 0.15;
-
-const stickGroup = new THREE.Group();
-stickGroup.name = "StickStripes";
-stickGroup.position.y = stickCenterY;
-skeleton.add(stickGroup);
-
-// 直线曲线（局部坐标，围绕y轴）
-const stickCurve = new THREE.LineCurve3(
-    new THREE.Vector3(0, stickLen / 2, 0),
-    new THREE.Vector3(0, -stickLen / 2, 0)
-);
-
-const stickTubeSeg = 20;
-const stickRadSeg = 8;
-
-for (let i = 0; i < stickStripes; i++) {
-    const a = (i / stickStripes) * Math.PI * 2;
-    const tubeGeo = new THREE.TubeGeometry(stickCurve, stickTubeSeg, stripeRadius, stickRadSeg, false);
-    const tube = new THREE.Mesh(tubeGeo, frameMat);
-    tube.position.set(Math.cos(a) * stripeOffset, 0, Math.sin(a) * stripeOffset);
-    tube.userData.sampleTag = "STICK";
-    stickGroup.add(tube);
-}
-// --- 6) Tassel / ribbon bundle (底部绸带/线束：让粒子轮廓“有尾巴”更像灯笼) ---
-            const tasselLen = CONFIG.lantern.tasselLen ?? 8.8;
-            const tasselTopY = stickCenterY - stickLen / 2 - 0.3;
-
-            // 多根竖线（像参考图杆下端的纵向条纹/线束）
-            const threadCount = CONFIG.lantern.tasselThreads ?? 18;
-            const threadGeo = new THREE.CylinderGeometry(0.045, 0.045, tasselLen * 0.9, 6);
-            for (let i = 0; i < threadCount; i++) {
-                const th = new THREE.Mesh(threadGeo, frameMat);
-                const a = (i / threadCount) * Math.PI * 2;
-                th.position.set(Math.cos(a) * 0.35, tasselTopY - tasselLen * 0.45, Math.sin(a) * 0.35);
-                th.userData.sampleTag = "TASSEL";
-                skeleton.add(th);
-            }
-
-            // 两条交叉绸带（薄片也可采样；为了不让采样都落到Plane上，设置较低权重即可）
-            const tasselW = CONFIG.lantern.tasselWidth ?? 1.2;
-            const ribbonGeo = new THREE.PlaneGeometry(tasselW, tasselLen, 1, 10);
-            for (let i = 0; i < 2; i++) {
-                const ribbon = new THREE.Mesh(ribbonGeo, redMat);
-                ribbon.position.set(0, tasselTopY - tasselLen / 2, 0);
-                ribbon.rotation.y = i === 0 ? Math.PI * 0.25 : -Math.PI * 0.25;
-                ribbon.userData.sampleTag = "TASSEL";
-                skeleton.add(ribbon);
-            }
-
-            // --- 7) Emblem + halo (可留可去；采样忽略 halo) ---
-            const emblemGeo = new THREE.CylinderGeometry(1.05, 1.05, 0.16, 28);
-            const emblem = new THREE.Mesh(emblemGeo, matLib?.coin ?? frameMat);
-            emblem.position.set(0, 0, rAt(0.5) + 0.15);
-            emblem.userData.sampleTag = "HARDWARE";
-            skeleton.add(emblem);
-
-            const haloMat = new THREE.MeshBasicMaterial({
-                map: glowTexture,
-                blending: THREE.AdditiveBlending,
-                transparent: true,
-                opacity: 0.55,
-                color: THEMES?.[0]?.ember ?? 0xff7a2a,
-                depthWrite: false
-            });
-            const halo = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), haloMat);
-            halo.position.z = 0.2;
-            halo.userData.sampleIgnore = true; // 不参与采样，避免点落在大平面上
-            emblem.add(halo);
-
-            STATE.emblemMesh = emblem;
-            STATE.emblemHaloMesh = halo;
-
-            // --- 8) 内部暖光（不影响采样，但提升氛围） ---
-            const innerLight = new THREE.PointLight(0xff9a3a, 1.15, 30, 2.0);
-            innerLight.position.set(0, 0.25, 0);
+            const innerLight = new THREE.PointLight(0xff9a3a, 2.2, 42, 1.6);
+            innerLight.position.set(0, 2.2, 0);
             lanternGroup.add(innerLight);
 
             mainGroup.add(lanternGroup);
+        }
 
-            // Final presentation uses particles: keep mesh hidden but usable for sampling
-            lanternGroup.traverse(o => { if (o.isMesh) o.visible = false; });
+        function createFloatingKnot() {
+            if (STATE.glowKnot) {
+                mainGroup.remove(STATE.glowKnot);
+                disposePoints(STATE.glowKnot);
+                STATE.glowKnot = null;
+            }
+
+            const knotGeo = new THREE.TorusKnotGeometry(2.1, 0.52, 120, 16);
+            const mat = matLib.knot.clone();
+            mat.emissive = new THREE.Color(mat.color);
+            mat.emissiveIntensity = 1.6;
+            const knot = new THREE.Mesh(knotGeo, mat);
+            knot.position.set(0, -6.5, 0);
+            knot.castShadow = false;
+            knot.receiveShadow = false;
+
+            const haloMat = new THREE.MeshBasicMaterial({
+                map: glowTexture,
+                color: mat.color,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const halo = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), haloMat);
+            halo.rotation.x = -Math.PI / 2;
+            halo.position.y = 0.05;
+            halo.userData.isHalo = true;
+            knot.add(halo);
+
+            mainGroup.add(knot);
+            STATE.glowKnot = knot;
         }
 
 
@@ -1114,12 +985,10 @@ for (let i = 0; i < stickStripes; i++) {
         // Placement disorder: make "小组件/照片/书信" more random (mosaic) while still forming the lantern outline
         // ================================
         const DISORDER_BY_TYPE = {
-            PHOTO:       { body: 0.78, rib: 0.18, hoop: 0.04, radialOut: 0.95, jitter: 0.75, jitterY: 0.45, yaw: 0.85, roll: 1.25, pitch: 0.35 },
-            LETTER:      { body: 0.75, rib: 0.20, hoop: 0.05, radialOut: 0.80, jitter: 0.65, jitterY: 0.35, yaw: 0.70, roll: 0.95, pitch: 0.25 },
-            FIRECRACKER: { body: 0.58, rib: 0.28, hoop: 0.14, radialOut: 0.55, jitter: 0.55, jitterY: 0.28 },
-            KNOT:        { body: 0.55, rib: 0.30, hoop: 0.15, radialOut: 0.48, jitter: 0.50, jitterY: 0.25 },
-            COIN:        { body: 0.52, rib: 0.32, hoop: 0.16, radialOut: 0.42, jitter: 0.46, jitterY: 0.22 },
-            COUPLET:     { body: 0.50, rib: 0.33, hoop: 0.17, radialOut: 0.45, jitter: 0.58, jitterY: 0.26 }
+            PHOTO:  { body: 1.0, radialOut: 0.95, jitter: 0.75, jitterY: 0.45, yaw: 0.85, roll: 1.25, pitch: 0.35 },
+            LETTER: { body: 1.0, radialOut: 0.80, jitter: 0.65, jitterY: 0.35, yaw: 0.70, roll: 0.95, pitch: 0.25 },
+            CORE:   { body: 1.0, radialOut: 0.35, jitter: 0.32, jitterY: 0.28 },
+            DECOR:  { body: 1.0, radialOut: 0.5,  jitter: 0.55, jitterY: 0.35 }
         };
 
         function pickSampleTagForType(type) {
@@ -1280,6 +1149,17 @@ for (let i = 0; i < stickStripes; i++) {
                     _tempVec.x += Math.cos(time * 0.5 * this.speed + this.offset) * 0.08; 
                 }
 
+                if (STATE.pointerRipple && STATE.pointerRipple.active) {
+                    _rippleVec.copy(_tempVec).sub(STATE.pointerRipple.pos);
+                    const dist = _rippleVec.length();
+                    if (dist < RIPPLE.radius && dist > 1e-4) {
+                        const falloff = Math.pow(1 - dist / RIPPLE.radius, 2);
+                        const push = RIPPLE.force * falloff * (mode === 'SCATTER' ? 0.6 : 1.0);
+                        _rippleVec.normalize();
+                        _tempVec.addScaledVector(_rippleVec, push);
+                    }
+                }
+
                 if (this.hasEmissive && mode === 'TREE' && !this.isDust) {
                     const flicker = 0.6 + 0.4 * Math.sin(time * 2 + this.offset);
                     this.mesh.material.emissiveIntensity = 0.6 + flicker * 1.8;
@@ -1413,65 +1293,67 @@ for (let i = 0; i < stickStripes; i++) {
         }
 
         function createParticles() {
-            const knotGeo = new THREE.TorusKnotGeometry(0.24, 0.08, 36, 6);
-            const firecrackerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.7, 12);
-            const coupletGeo = new THREE.BoxGeometry(0.25, 0.95, 0.08);
-            const coinGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.08, 16);
-            const beadGeo = new THREE.SphereGeometry(0.22, 12, 12);
-            const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
-
-            // Use instancing to reduce draw calls while keeping variety via per-instance transforms.
-            const instancedConfigs = [
-                { geo: coupletGeo, mat: matLib.couplet, type: 'COUPLET' },
-                { geo: firecrackerGeo, mat: matLib.firecracker, type: 'FIRECRACKER' },
-                { geo: knotGeo, mat: matLib.knot, type: 'KNOT' },
-                { geo: coinGeo, mat: matLib.coin, type: 'COIN' },
-                { geo: beadGeo, mat: matLib.bead, type: 'BEAD' }
-            ];
-
-            const instancePools = instancedConfigs.map(cfg => {
-                const count = Math.ceil(CONFIG.particles.count * 0.2); // keep ratios similar, fill later
-                const mesh = new THREE.InstancedMesh(cfg.geo, cfg.mat, count);
-                mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-                mesh.userData.type = cfg.type;
-                mainGroup.add(mesh);
-                return mesh;
+            // Clear old non-photo/letter particles
+            const instancedSet = new Set();
+            particleSystem.forEach(p => {
+                if (p.instancedMesh && p.type !== 'PHOTO' && p.type !== 'LETTER') instancedSet.add(p.instancedMesh);
+                else if (!p.instancedMesh && p.type !== 'PHOTO' && p.type !== 'LETTER') mainGroup.remove(p.mesh);
             });
+            instancedSet.forEach(mesh => { mainGroup.remove(mesh); disposePoints(mesh); });
+            particleSystem = particleSystem.filter(p => p.type === 'PHOTO' || p.type === 'LETTER');
 
+            const coreGeo = new THREE.SphereGeometry(0.22, 10, 10);
+            const coreMesh = new THREE.InstancedMesh(coreGeo, matLib.lanternCore, CONFIG.particles.count);
+            coreMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            mainGroup.add(coreMesh);
             const _m = new THREE.Matrix4();
-            const typePool = ['COUPLET','FIRECRACKER','KNOT','COIN','BEAD'];
-            // Reduce FIRECRACKER/KNOT share while keeping variety
-            const typeRanges = [0.20, 0.32, 0.48, 0.75, 1.0];
-
-            // Fill instanced meshes and track per-particle data
-            let instanceIndex = { COUPLET:0, FIRECRACKER:0, KNOT:0, COIN:0, BEAD:0 };
-            const instanceMax = Math.ceil(CONFIG.particles.count * 0.22); // slight headroom per type
-            const instanceMap = { COUPLET:instanceMax, FIRECRACKER:instanceMax, KNOT:instanceMax, COIN:instanceMax, BEAD:instanceMax };
-
-            for (let i = 0; i < CONFIG.particles.count; i++) {
-                const r = Math.random();
-                let type = 'BEAD';
-                for (let j = 0; j < typeRanges.length; j++) { if (r < typeRanges[j]) { type = typePool[j]; break; } }
-
-                const mesh = instancePools.find(m => m.userData.type === type);
-                const idx = instanceIndex[type];
-                if (idx < mesh.count) {
-                    const s = 1.4 + Math.random() * 1.5;
-                    _m.identity();
-                    _m.makeRotationFromEuler(new THREE.Euler(Math.random()*6, Math.random()*6, Math.random()*6));
-                    _m.scale(new THREE.Vector3(s,s,s));
-                    mesh.setMatrixAt(idx, _m);
-                    instanceIndex[type]++;
-                    particleSystem.push(new Particle(new THREE.Object3D(), type, false, mesh, idx));
+            for (let i = 0; i < coreMesh.count; i++) {
+                const pos = new THREE.Vector3();
+                const ok = sampleLanternPoint(pos, "BODY");
+                if (!ok) {
+                    const a = Math.random() * Math.PI * 2;
+                    const r = (CONFIG.lantern.radius || 9.5) * (0.6 + Math.random() * 0.5);
+                    const y = (Math.random() - 0.5) * (CONFIG.lantern.height || 24) * 0.9;
+                    pos.set(Math.cos(a) * r, y, Math.sin(a) * r);
                 }
+                applyLanternDisorder(pos, 'CORE');
+                const s = 0.85 + Math.random() * 0.55;
+                _m.identity();
+                _m.setPosition(pos);
+                _m.scale(new THREE.Vector3(s, s, s));
+                coreMesh.setMatrixAt(i, _m);
+                particleSystem.push(new Particle(new THREE.Object3D(), 'CORE', false, coreMesh, i));
             }
+            coreMesh.instanceMatrix.needsUpdate = true;
 
-            instancePools.forEach(pool => { pool.instanceMatrix.needsUpdate = true; });
-
-            for (let i = 0; i < CONFIG.particles.dustCount; i++) {
-                const mesh = new THREE.Mesh(dustGeo, matLib.dust); mesh.scale.setScalar(0.5 + Math.random());
-                mainGroup.add(mesh); particleSystem.push(new Particle(mesh, 'DUST', true));
-            }
+            const decorGeo = new THREE.SphereGeometry(0.34, 16, 16);
+            const decorMats = [matLib.decorGold, matLib.decorWine, matLib.decorYellow, matLib.decorChampagne];
+            const decorCount = Math.max(60, Math.floor(CONFIG.particles.count * 0.08));
+            const decorPerMat = Math.ceil(decorCount / decorMats.length);
+            decorMats.forEach((mat, idx) => {
+                const mesh = new THREE.InstancedMesh(decorGeo, mat, decorPerMat);
+                mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                mainGroup.add(mesh);
+                for (let i = 0; i < decorPerMat; i++) {
+                    const pos = new THREE.Vector3();
+                    const ok = sampleLanternPoint(pos, "BODY");
+                    if (!ok) {
+                        const a = Math.random() * Math.PI * 2;
+                        const r = (CONFIG.lantern.radius || 9.5) * (0.9 + Math.random() * 0.3);
+                        const y = (Math.random() - 0.5) * (CONFIG.lantern.height || 24) * 0.9;
+                        pos.set(Math.cos(a) * r, y, Math.sin(a) * r);
+                    }
+                    applyLanternDisorder(pos, 'DECOR');
+                    pos.multiplyScalar(1.05 + Math.random() * 0.05);
+                    const s = 0.7 + Math.random() * 0.65;
+                    _m.identity();
+                    _m.setPosition(pos);
+                    _m.scale(new THREE.Vector3(s, s, s));
+                    mesh.setMatrixAt(i, _m);
+                    particleSystem.push(new Particle(new THREE.Object3D(), 'DECOR', false, mesh, i));
+                }
+                mesh.instanceMatrix.needsUpdate = true;
+            });
 
             // Lantern contour glow orbs (irregular bright dots)
             rebuildLanternOutlineOrbs();
@@ -1654,8 +1536,20 @@ for (let i = 0; i < stickStripes; i++) {
 
             matLib.lanternBody.color.setHex(theme.lantern);
             matLib.lanternBody.emissive.setHex(theme.lanternGlow);
+            if (matLib.lanternCore) {
+                matLib.lanternCore.color.setHex(theme.lantern);
+                matLib.lanternCore.emissive.setHex(theme.lanternGlow);
+            }
             matLib.lanternGold.color.setHex(theme.accent);
             matLib.lanternGold.emissive.setHex(theme.accentDeep);
+            if (STATE.glowKnot && STATE.glowKnot.material) {
+                STATE.glowKnot.material.color.setHex(theme.knot);
+                STATE.glowKnot.material.emissive.setHex(theme.knot);
+                const halo = STATE.glowKnot.children?.find?.(c => c.userData && c.userData.isHalo);
+                if (halo && halo.material && halo.material.color) {
+                    halo.material.color.setHex(theme.knot);
+                }
+            }
             matLib.knot.color.setHex(theme.knot);
             matLib.firecracker.color.setHex(theme.firecracker);
             matLib.couplet.color.setHex(theme.couplet);
@@ -1675,9 +1569,6 @@ for (let i = 0; i < stickStripes; i++) {
             if (sparkSystem) sparkSystem.material.color.setHex(theme.spark);
             if (petalSystem) petalSystem.material.color.setHex(theme.petal);
 
-            if (STATE.emblemHaloMesh) {
-                STATE.emblemHaloMesh.material.color.setHex(theme.ember);
-            }
 
             updateThemeUI();
             if (save) {
@@ -2111,6 +2002,19 @@ for (let i = 0; i < stickStripes; i++) {
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
             updateView();
+        }
+
+        function pointerToLanternSpace(clientX, clientY) {
+            const ndc = new THREE.Vector2(
+                (clientX / window.innerWidth) * 2 - 1,
+                -(clientY / window.innerHeight) * 2 + 1
+            );
+            _raycaster.setFromCamera(ndc, camera);
+            const hit = new THREE.Vector3();
+            const ok = _raycaster.ray.intersectPlane(_planeZ, hit);
+            if (!ok) return null;
+            mainGroup.worldToLocal(hit);
+            return hit;
         }
 
         function updateView() {
@@ -2733,10 +2637,10 @@ function animate() {
                 bgGroup.rotation.y -= 0.015 * dt; 
             }
 
-            if (STATE.emblemMesh) {
-                STATE.emblemMesh.rotation.y -= dt * 0.6;
-                STATE.emblemMesh.rotation.z = Math.sin(STATE.time) * 0.15;
-                STATE.emblemMesh.scale.setScalar(1.0 + Math.sin(STATE.time * 2) * 0.08);
+            if (STATE.glowKnot) {
+                STATE.glowKnot.rotation.y -= dt * 0.45;
+                STATE.glowKnot.rotation.x = Math.sin(STATE.time * 0.6) * 0.12;
+                STATE.glowKnot.scale.setScalar(1.0 + Math.sin(STATE.time * 1.8) * 0.05);
             }
             particleSystem.forEach(p => p.update(dt, STATE.time, STATE.mode, STATE.focusTarget, (STATE.mode === 'FOCUS' ? _invMatrix : null)));
             updateLanternOrbs(dt);
@@ -2767,6 +2671,24 @@ function animate() {
 
         function setupEvents() {
             window.addEventListener('resize', handleResize);
+
+            const canvasContainer = document.getElementById('canvas-container');
+            if (canvasContainer) {
+                const updateRipple = (e) => {
+                    const hit = pointerToLanternSpace(e.clientX, e.clientY);
+                    if (!hit) return;
+                    STATE.pointerRipple.active = true;
+                    STATE.pointerRipple.pos.copy(hit);
+                    STATE.pointerRipple.strength = 1.0;
+                };
+                canvasContainer.addEventListener('pointermove', updateRipple);
+                canvasContainer.addEventListener('pointerdown', updateRipple);
+                canvasContainer.addEventListener('pointerenter', updateRipple);
+                canvasContainer.addEventListener('pointerleave', () => {
+                    STATE.pointerRipple.active = false;
+                    STATE.pointerRipple.strength = 0;
+                });
+            }
 
             const fsBtn = document.getElementById('btn-fullscreen');
             fsBtn.onclick = (e) => {

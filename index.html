@@ -3,94 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Lucky Lantern - Custom Edition</title>
+    <title>花灯祈愿</title>
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='%23c3131f'/><circle cx='32' cy='32' r='10' fill='%23f3bc6c'/></svg>">
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Ma+Shan+Zheng&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap');
 
-        body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Cinzel', serif; touch-action: none; user-select: none; -webkit-user-select: none; }
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; z-index: 1; }
-        
-        #ui-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%); }
-        
+        :root {
+            --ui-gold: #f3bc6c;
+            --ui-gold-soft: rgba(243, 188, 108, 0.35);
+            --ui-red: #c3131f;
+            --ui-deep: #0f0505;
+            --ui-panel: rgba(12, 6, 6, 0.88);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 30%, rgba(120, 20, 20, 0.35), transparent 60%), #0b0303;
+            font-family: 'Noto Serif SC', serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; inset: 0; z-index: 1; }
+
+        #ui-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            background: radial-gradient(circle at center, rgba(120, 20, 20, 0.12) 0%, rgba(0,0,0,0.4) 70%);
+        }
+
         #main-title {
             position: absolute;
-            top: 10%;
+            top: 8%;
             left: 50%;
             transform: translateX(-50%);
             width: 100%;
             text-align: center;
-            font-family: 'Cinzel', serif;
-            font-weight: 800;
-            font-size: clamp(36px, 7vw, 80px); 
-            letter-spacing: 0.15em;
+            font-family: 'ZCOOL KuaiLe', cursive;
+            font-weight: 400;
+            font-size: clamp(32px, 7vw, 74px);
+            letter-spacing: 0.18em;
             text-transform: uppercase;
             pointer-events: none;
             z-index: 20;
             opacity: 0;
             min-height: 1.2em;
-            
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-image: linear-gradient(180deg, #fffdf0 0%, #eacda3 30%, #d6ae7b 60%, #8b6c42 100%);
-            filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.6));
-            
+            background-image: linear-gradient(180deg, #fff3d8 0%, #f3bc6c 55%, #b36a2d 100%);
+            filter: drop-shadow(0 0 18px rgba(243, 188, 108, 0.45));
             animation: titleFadeIn 2s ease-out forwards 1s;
-            transition: filter 1.5s ease, background-image 1.5s ease;
+            transition: filter 1.2s ease, background-image 1.2s ease;
         }
 
         @keyframes titleFadeIn {
-            from { opacity: 0; transform: translate(-50%, -20px); }
+            from { opacity: 0; transform: translate(-50%, -16px); }
             to { opacity: 1; transform: translate(-50%, 0); }
         }
 
         #loader { position: absolute; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 1.2s; pointer-events: none; }
-        .spinner { width: 40px; height: 40px; border: 2px solid rgba(212, 175, 55, 0.1); border-top: 2px solid #d4af37; border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 40px; height: 40px; border: 2px solid rgba(243, 188, 108, 0.2); border-top: 2px solid var(--ui-gold); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        #top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 30; display: none; flex-direction: row; gap: 15px; pointer-events: auto; }
-        #top-left-controls { position: absolute; top: 16px; left: 16px; z-index: 30; pointer-events: auto; }
-        .control-col { display: flex; flex-direction: column; gap: 15px; }
-        
-        .control-btn { background: rgba(10, 10, 10, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; width: 100px; padding: 5px 0; border-radius: 7px; font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.3s ease; }
-        .control-btn:hover { background: rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 0.8); color: #fff; transform: scale(1.05); }
-        .control-btn:active { transform: scale(0.95); }
-        .control-btn.disabled { color: #666; border-color: #444; }
-        .icon-btn { width: 38px; height: 38px; border-radius: 10px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(10, 10, 10, 0.7); border: 1px solid rgba(255, 215, 160, 0.6); color: #f6d27f; box-shadow: 0 0 12px rgba(255, 187, 92, 0.25); position: relative; }
-        .icon-btn::before { content: ""; width: 18px; height: 18px; display: block; mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M7 3H3v4h2V5h2V3zm12 0h-4v2h2v2h2V3zM5 17H3v4h4v-2H5v-2zm16 0h-2v2h-2v2h4v-4zM7 7h10v10H7V7zm2 2v6h6V9H9z"/></svg>') center / contain no-repeat; background: currentColor; }
-        .icon-btn span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-        
-        #file-input, #music-input, #import-input { display: none; }
+        #top-left-controls { position: absolute; top: 16px; left: 16px; z-index: 40; display: flex; gap: 12px; pointer-events: auto; }
+        .icon-btn { width: 42px; height: 42px; border-radius: 12px; background: rgba(12, 6, 6, 0.6); border: 1px solid var(--ui-gold-soft); color: var(--ui-gold); display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(6px); transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+        .icon-btn:hover { transform: translateY(-1px); border-color: var(--ui-gold); box-shadow: 0 0 14px rgba(243, 188, 108, 0.3); }
+        .icon-btn:active { transform: translateY(1px) scale(0.98); }
+        .icon-btn svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 
-        #webcam-wrapper { position: absolute; bottom: 20px; right: 20px; opacity: 0; pointer-events: none; border: 1px solid rgba(212, 175, 55, 0.5); border-radius: 4px; background: #000; z-index: 50; display: flex; transition: opacity 0.5s; }
-        #webcam { display: none; }
+        #settings-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 35; }
+        #settings-backdrop.active { opacity: 1; pointer-events: auto; }
+        #help-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 35; }
+        #help-backdrop.active { opacity: 1; pointer-events: auto; }
+
+        #settings-panel {
+            position: absolute;
+            top: 68px;
+            left: 16px;
+            width: min(88vw, 380px);
+            max-height: min(82vh, 520px);
+            overflow: auto;
+            background: var(--ui-panel);
+            border: 1px solid rgba(243, 188, 108, 0.45);
+            border-radius: 14px;
+            padding: 16px;
+            z-index: 40;
+            display: none;
+            pointer-events: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+            backdrop-filter: blur(8px);
+        }
+        #settings-panel.active { display: block; animation: panelIn 0.25s ease; }
+        @keyframes panelIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        #help-panel {
+            position: absolute;
+            top: 68px;
+            left: 16px;
+            width: min(88vw, 380px);
+            max-height: min(80vh, 460px);
+            overflow: auto;
+            background: var(--ui-panel);
+            border: 1px solid rgba(243, 188, 108, 0.45);
+            border-radius: 14px;
+            padding: 16px;
+            z-index: 40;
+            display: none;
+            pointer-events: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+            backdrop-filter: blur(8px);
+        }
+        #help-panel.active { display: block; animation: panelIn 0.25s ease; }
+        .help-list { display: flex; flex-direction: column; gap: 12px; }
+        .help-item { display: flex; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(243, 188, 108, 0.18); background: rgba(12, 6, 6, 0.55); }
+        .help-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(243, 188, 108, 0.15); color: var(--ui-gold); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; }
+        .help-title { font-size: clamp(12px, 2.7vw, 14px); color: rgba(255,255,255,0.9); margin-bottom: 4px; }
+        .help-desc { font-size: clamp(11px, 2.5vw, 13px); color: rgba(255,255,255,0.65); line-height: 1.6; }
+
+        .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+        .panel-title { font-family: 'ZCOOL KuaiLe', cursive; font-size: clamp(18px, 3.5vw, 22px); color: var(--ui-gold); letter-spacing: 0.12em; }
+        .panel-close { background: transparent; border: 1px solid rgba(243, 188, 108, 0.5); color: var(--ui-gold); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; }
+        .panel-close:hover { background: rgba(243, 188, 108, 0.15); }
+
+        .panel-section { border-top: 1px solid rgba(243, 188, 108, 0.15); padding-top: 12px; margin-top: 12px; }
+        .section-title { font-size: clamp(13px, 2.7vw, 15px); color: rgba(255,255,255,0.85); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+
+        .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip { background: rgba(18, 8, 8, 0.8); border: 1px solid rgba(243, 188, 108, 0.35); color: rgba(255,255,255,0.85); padding: 6px 12px; border-radius: 999px; font-size: clamp(12px, 2.6vw, 14px); cursor: pointer; transition: all 0.2s ease; }
+        .chip:hover { border-color: var(--ui-gold); color: #fff; }
+        .chip.active { background: rgba(243, 188, 108, 0.18); border-color: var(--ui-gold); color: #fff; box-shadow: 0 0 10px rgba(243, 188, 108, 0.2); }
+
+        #quality-custom { display: none; margin-top: 12px; }
+        #quality-custom.active { display: block; }
+
+        .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+        .slider-label { font-size: clamp(12px, 2.6vw, 14px); color: rgba(255,255,255,0.8); min-width: 72px; }
+        .slider-value { font-size: clamp(12px, 2.6vw, 14px); color: var(--ui-gold); min-width: 50px; text-align: right; }
+        .slider { flex: 1; }
+        input[type="range"] { width: 100%; -webkit-appearance: none; height: 4px; border-radius: 999px; background: rgba(243, 188, 108, 0.25); outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--ui-gold); box-shadow: 0 0 10px rgba(243, 188, 108, 0.6); cursor: pointer; border: 1px solid rgba(0,0,0,0.4); }
+        input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--ui-gold); border: 1px solid rgba(0,0,0,0.4); }
+
+        .panel-note { font-size: clamp(11px, 2.4vw, 12px); color: rgba(255,255,255,0.6); margin-top: 6px; }
+
+        #webcam-wrapper { position: absolute; bottom: 20px; right: 20px; opacity: 0; pointer-events: none; border: 1px solid rgba(243, 188, 108, 0.4); border-radius: 4px; background: #000; z-index: 50; display: flex; transition: opacity 0.5s; }
+        #webcam { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; opacity: 0; }
         #webcam-preview { width: 100%; height: 100%; transform: scaleX(-1); }
 
-        #letter-editor-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; max-width: 500px; background: rgba(10, 10, 10, 0.95); border: 1px solid #d4af37; border-radius: 10px; padding: 20px; z-index: 200; display: none; flex-direction: column; gap: 15px; pointer-events: auto; }
-        #letter-editor-modal h3 { color: #d4af37; margin: 0; text-align: center; }
-        #letter-text-input { width: 100%; height: 150px; background: rgba(255,255,255,0.05); border: 1px solid #444; color: #fff; padding: 10px; resize: none; outline: none; }
-        .modal-btn-group { display: flex; justify-content: flex-end; gap: 10px; }
 
-        #letter-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 150; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; pointer-events: auto; opacity: 0; transition: opacity 1.5s ease; }
-        .letter-paper { height: 80%; aspect-ratio: 3/4; background: rgba(255, 252, 240, 0.15); backdrop-filter: blur(3px); border: 1px solid rgba(255, 255, 255, 0.3); padding: 6vh; box-sizing: border-box; position: relative; display: flex; flex-direction: column; transform: translateY(20px); transition: transform 1.5s ease-out; }
-        .letter-content { font-family: 'Ma Shan Zheng', cursive; font-size: clamp(16px, 2.5vh, 24px); line-height: 1.8; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 5px rgba(255,215,0, 0.3); white-space: pre-wrap; overflow-y: auto; flex: 1; scroll-behavior: smooth; }
-        
-        .letter-content::-webkit-scrollbar { width: 6px; }
-        .letter-content::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 3px; }
-        .cursor::after { content: '|'; animation: blink 1s step-end infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-
-        .letter-close-btn { position: absolute; top: 15px; right: 15px; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.4); border-radius: 50%; color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; }
-        .letter-close-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: #fff; }
-    </style>
+        @media (max-width: 680px) {
+            #top-left-controls { top: 12px; left: 12px; gap: 10px; }
+            .icon-btn { width: 38px; height: 38px; border-radius: 10px; }
+            #settings-panel { top: 60px; left: 12px; }
+            #help-panel { top: 60px; left: 12px; }
+        }
+        #camera-prompt .camera-btn:active { transform: scale(0.98); }
+</style>
 
     <script type="importmap">
         {
             "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+                "three": "./vendor/three/three.module.js",
+                "three/addons/": "./vendor/three/addons/",
+                "@mediapipe/tasks-vision": "./vendor/mediapipe/tasks-vision.js"
             }
         }
     </script>
@@ -102,104 +183,385 @@
 
     <div id="ui-layer">
         <div id="main-title"></div>
-
         <div id="top-left-controls">
-            <button id="btn-fullscreen" class="control-btn icon-btn"><span>全屏显示</span></button>
+            <button id="btn-fullscreen" class="icon-btn" aria-label="全屏">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 3H4v4M20 8V4h-4M16 21h4v-4M4 16v4h4" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+            </button>
+            <button id="btn-settings" class="icon-btn" aria-label="设置">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.1a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.1a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.1a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.1a1 1 0 0 0-.9.6z" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+            </button>
+            <button id="btn-help" class="icon-btn" aria-label="手势指南">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M12 17h.01" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+            </button>
         </div>
 
-        <div id="top-right-controls">
-            <div class="control-col" id="col-media">
-                <button id="btn-bg-music" class="control-btn">上传音乐</button>
-                <button id="btn-add-photo" class="control-btn">上传照片</button>
-                <button id="btn-write-letter" class="control-btn">上传书信</button>
-                <button id="btn-set-title" class="control-btn">设置标题</button>
+        <div id="settings-backdrop"></div>
+        <div id="settings-panel" aria-hidden="true">
+            <div class="panel-header">
+                <div class="panel-title">灯笼设置</div>
+                <button class="panel-close" id="btn-close-settings" aria-label="关闭设置">×</button>
             </div>
-            <div class="control-col" id="col-system">
-                <button id="btn-import" class="control-btn">导入网页</button>
-                <button id="btn-export" class="control-btn">导出网页</button>
-                <button id="btn-switch-theme" class="control-btn">颜色切换</button>
+            <div class="panel-section">
+                <div class="section-title">颜色</div>
+                <div class="chip-group" id="theme-options">
+                    <button class="chip" data-theme="0">朱砂金</button>
+                    <button class="chip" data-theme="1">青玉灯</button>
+                    <button class="chip" data-theme="2">夜曜</button>
+                </div>
+                <div class="panel-note">颜色切换仅对当前设备生效。</div>
             </div>
-        </div>
-        <input type="file" id="file-input" multiple accept="image/*">
-        <input type="file" id="music-input" accept="audio/mp3,audio/*">
-        <input type="file" id="import-input" accept=".json">
-    </div>
-
-    <div id="letter-editor-modal">
-        <h3>撰写你的心意</h3>
-        <textarea id="letter-text-input" placeholder="在这里写下你想说的话..."></textarea>
-        <div class="modal-btn-group">
-            <button id="btn-cancel-letter" class="control-btn" style="width: 80px;">取消</button>
-            <button id="btn-save-letter" class="control-btn" style="width: 80px;">保存</button>
+                    <div class="panel-section">
+            <div class="section-title">画质</div>
+            <div class="chip-group" id="quality-options">
+                <button class="chip" data-quality="low">低</button>
+                <button class="chip" data-quality="medium">中</button>
+                <button class="chip" data-quality="high">高</button>
+                <button class="chip" data-quality="ultra">极高</button>
+            </div>
+            <div class="panel-note">默认进入“极高”画质（灯笼粒子3000 / 光尘2400 / 背景粒子3600 / 渲染1.2x / 辉光1.4）。画质越高越吃性能。</div>
         </div>
     </div>
-
-    <div id="letter-overlay">
-        <div class="letter-paper">
-            <div class="letter-close-btn" id="btn-close-letter-mode">×</div>
-            <div class="letter-content" id="letter-content-display"></div>
+</div>
+<div id="help-backdrop"></div>
+        <div id="help-panel" aria-hidden="true">
+            <div class="panel-header">
+                <div class="panel-title">手势指南</div>
+                <button class="panel-close" id="btn-close-help" aria-label="关闭手势指南">×</button>
+            </div>
+            <div class="help-list">
+                <div class="help-item">
+                    <div class="help-icon">OK</div>
+                    <div>
+                        <div class="help-title">OK 手势</div>
+                        <div class="help-desc">聚焦放大正对的照片，松开自动还原。</div>
+                    </div>
+                </div>
+                <div class="help-item">
+                    <div class="help-icon">UP</div>
+                    <div>
+                        <div class="help-title">点赞（大拇指竖起）</div>
+                        <div class="help-desc">聚焦放大正对的书信，松开自动还原。</div>
+                    </div>
+                </div>
+                <div class="help-item">
+                    <div class="help-icon">4</div>
+                    <div>
+                        <div class="help-title">四指张开（拇指收起）</div>
+                        <div class="help-desc">切换灯笼配色主题。</div>
+                    </div>
+                </div>
         </div>
     </div>
 
     <div id="webcam-wrapper">
-        <video id="webcam" autoplay playsinline webkit-playsinline></video>
+        <video id="webcam" autoplay muted playsinline webkit-playsinline></video>
         <canvas id="webcam-preview"></canvas>
     </div>
-    
-    <audio id="bg-music" loop crossorigin="anonymous"></audio>
 
+    <script>
+    window.LANTERN_ENABLE_GESTURES = true;
+    window.LANTERN_GESTURE_ASSET_BASE = "./vendor/mediapipe/wasm";
+    window.LANTERN_GESTURE_MODEL_URL = "./vendor/mediapipe/hand_landmarker.task";
+    </script>
     <script type="module">
+        const BUILD_ID = '2025-12-25-v5';
+        console.log('[lantern] build', BUILD_ID);
         import * as THREE from 'three';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'; 
-        import { FilesetResolver, HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
+        const LOCAL_IMG_DIR = window.LANTERN_LOCAL_IMG_DIR || './img/';
+        const LOCAL_IMG_INDEX = window.LANTERN_LOCAL_IMG_INDEX || `${LOCAL_IMG_DIR}index.json`;
+        const ENABLE_AUTO_INDEX = window.LANTERN_ENABLE_AUTO_INDEX === true;
+        const GESTURE_WASM_BASE = window.LANTERN_GESTURE_ASSET_BASE || 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm';
+        const GESTURE_MODEL_URL = window.LANTERN_GESTURE_MODEL_URL || 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+        const GESTURE_ENABLED = Boolean(window.LANTERN_ENABLE_GESTURES || window.LANTERN_GESTURE_ASSET_BASE);
+        const STORAGE_KEYS = {
+            theme: 'lantern-theme',
+            quality: 'lantern-quality'
+        };
+
+        const QUALITY_PRESETS = {
+            low: { particleCount: 900, dustCount: 600, bgCount: 900, orbCount: 650, renderScale: 0.85, bloomStrength: 0.35 },
+            medium: { particleCount: 1500, dustCount: 1100, bgCount: 1500, orbCount: 1050, renderScale: 1.0, bloomStrength: 0.5 },
+            high: { particleCount: 2200, dustCount: 1600, bgCount: 2300, orbCount: 1450, renderScale: 1.1, bloomStrength: 0.7 },
+            ultra: { particleCount: 3000, dustCount: 2400, bgCount: 3600, orbCount: 1900, renderScale: 1.2, bloomStrength: 1.4 }
+        };
+
+        const QUALITY_LIMITS = {
+            particleCount: [600, 3000],
+            dustCount: [400, 2400],
+            bgCount: [600, 3600],
+            orbCount: [0, 2400],
+            renderScale: [0.6, 2.0],
+            bloomStrength: [0, 1.4]
+        };
+
+        const THEMES = [
+            {
+                name: '朱砂金',
+                bg: 0x0b0303,
+                fog: 0x120707,
+                lantern: 0xc3131f,
+                lanternGlow: 0xffb36b,
+                accent: 0xf3bc6c,
+                accentDeep: 0x6f3b16,
+                knot: 0xc3131f,
+                firecracker: 0xb41117,
+                couplet: 0xc8222b,
+                coin: 0xf3bc6c,
+                bead: 0xffe2b5,
+                dust: 0xfff1da,
+                ember: 0xffb36b,
+                spark: 0xffe0aa,
+                petal: 0xf6b7a8
+            },
+            {
+                name: '青玉灯',
+                bg: 0x031413,
+                fog: 0x071d1a,
+                lantern: 0x1f7a64,
+                lanternGlow: 0x74d8b8,
+                accent: 0xf0c87a,
+                accentDeep: 0x4e3b1a,
+                knot: 0x1f7a64,
+                firecracker: 0x2b9276,
+                couplet: 0x246d5e,
+                coin: 0xf0c87a,
+                bead: 0xe6f6ef,
+                dust: 0xdaf5ea,
+                ember: 0x88f0d0,
+                spark: 0xc7f7ea,
+                petal: 0x8fd9c2
+            },
+            {
+                name: '夜曜',
+                bg: 0x050307,
+                fog: 0x0e0609,
+                lantern: 0x90131b,
+                lanternGlow: 0xf3b566,
+                accent: 0xf0b25b,
+                accentDeep: 0x5b2e12,
+                knot: 0x8b1218,
+                firecracker: 0x6d0d11,
+                couplet: 0x7a141b,
+                coin: 0xf0b25b,
+                bead: 0xffdfb2,
+                dust: 0xf7e3c2,
+                ember: 0xf0b25b,
+                spark: 0xf7d89f,
+                petal: 0xe7a5a5
+            }
+        ];
 
         const CONFIG = {
             colors: {
-                bg: 0x020205,
-                gold: 0xffd700,
-                pinkHot: 0xff3aa5,
-                pinkSoft: 0xffb7c5
+                white: 0xffffff
             },
-            particles: { 
-                count: 1400,
-                dustCount: 1000,
-                lanternHeight: 26,
-                lanternRadius: 8.5
+            lantern: { height: 24, radius: 9.5, neckRadius: 2.6, segments: 32 },
+            particles: {
+                count: QUALITY_PRESETS.medium.particleCount,
+                dustCount: QUALITY_PRESETS.medium.dustCount,
+                bgCount: QUALITY_PRESETS.medium.bgCount,
+                orbCount: QUALITY_PRESETS.medium.orbCount,
+                driftSpeed: 8
             },
-            camera: { z: 55 },
+            photos: {
+                maxCount: 60
+            },
+            letters: {
+                maxCount: 40
+            },
+            camera: { z: 58 },
             gestures: { palmOpenThreshold: 0.35, sensitivity: 6.0 }
         };
 
+        const FOCUS_DISTANCE = 15;
+
         const STATE = {
-            mode: 'TREE', focusTarget: null, currentPhotoIndex: -1,
-            currentThemeIndex: 0, 
+            mode: 'TREE', focusTarget: null, focusTargetType: null,
+            currentThemeIndex: 0,
             gestureDebounceTimer: 0,
-            isGestureSwitchEnabled: true, 
+            isGestureSwitchEnabled: true,
             scatterScale: 1.0, gestureBaseSpread: null,
             hand: { detected: false, x: 0, y: 0 },
             rotation: { x: 0, y: 0 }, spinVel: { x: 0, y: 0 }, time: 0,
-            wasPointing: false, palmCenter: { x: 0.5, y: 0.5 }, hasPalmCenter: false,
-            starMesh: null, starHaloMesh: null,
-            // 修改1：清空书信默认内容
-            letterContent: "", 
-            letterTyper: null, letterStartTimer: null, letterLastTriggerTime: 0,
-            musicData: null,
+            wasOkGesture: false,
+            wasThumbsUpGesture: false, palmCenter: { x: 0.5, y: 0.5 }, hasPalmCenter: false,
+            emblemMesh: null, emblemHaloMesh: null,
+            letters: [],
+            quality: {
+                preset: 'ultra',
+                settings: { ...QUALITY_PRESETS.ultra }
+            }
         };
 
-        let scene, camera, renderer, composer, clock = new THREE.Clock();
-        let mainGroup, starGroup, bgGroup, photoMeshGroup, particleSystem = []; 
-        let galaxySystem = null; 
-        let heartSystem = null;
+        let scene, camera, renderer, composer, bloomPass, clock = new THREE.Clock();
+        let mainGroup, lanternGroup, bgGroup, photoMeshGroup, letterMeshGroup, particleSystem = [];
+        let emberSystem = null;
+        let sparkSystem = null;
+        let petalSystem = null;
 
+        let outlineOrbSystem = null;
         let handLandmarker, video, drawingUtils, canvasCtx;
-        let heartTexture, matLib = {};
+        let handConnections = null;
+        let cameraStream = null;
+        let cameraStarting = null;
+        let lastCameraError = null;
+        let mediaPipeIniting = false;
+        let cameraListenersReady = false;
+        let isPredicting = false;
+        let lanternTexture, coupletTexture, emberTexture, petalTexture, glowTexture, matLib = {};
+        let qualityApplyTimer = null;
         
         const _tempVec = new THREE.Vector3();
         const _targetVec = new THREE.Vector3();
         const _invMatrix = new THREE.Matrix4();
+        const _focusVec = new THREE.Vector3();
+        const _focusNdc = new THREE.Vector3();
+
+        // ====== Lantern mesh -> particle sampling (surface) ======
+        // Particles will sample positions from the generated lantern mesh geometry.
+        let LANTERN_SAMPLERS = null;
+        const _lanternSamplePos = new THREE.Vector3();
+
+        const LANTERN_SAMPLE_WEIGHTS = [
+            ["RIB", 0.62],
+            ["HOOP", 0.18],
+            ["HARDWARE", 0.06],
+            ["STICK", 0.08],
+            ["TASSEL", 0.06],
+        ];
+
+        function _pickWeightedTag() {
+            const r = Math.random();
+            let acc = 0;
+            for (const [tag, w] of LANTERN_SAMPLE_WEIGHTS) {
+                acc += w;
+                if (r <= acc) return tag;
+            }
+            return "BODY";
+        }
+
+        function buildMeshTriangleSampler(mesh) {
+            const geom = mesh.geometry;
+            const posAttr = geom.attributes.position;
+            const idxAttr = geom.index;
+            const indices = idxAttr ? idxAttr.array : null;
+            const triCount = indices ? (indices.length / 3) : (posAttr.count / 3);
+            const cumulative = new Float32Array(triCount);
+            let total = 0;
+
+            const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+            for (let t = 0; t < triCount; t++) {
+                const i0 = indices ? indices[t * 3 + 0] : (t * 3 + 0);
+                const i1 = indices ? indices[t * 3 + 1] : (t * 3 + 1);
+                const i2 = indices ? indices[t * 3 + 2] : (t * 3 + 2);
+                a.fromBufferAttribute(posAttr, i0);
+                b.fromBufferAttribute(posAttr, i1);
+                c.fromBufferAttribute(posAttr, i2);
+                // area = 0.5 * |(b-a) x (c-a)|
+                b.sub(a); c.sub(a);
+                const area = b.cross(c).length() * 0.5;
+                total += area;
+                cumulative[t] = total;
+            }
+
+            return { mesh, posAttr, indices, cumulative, total };
+        }
+
+        function sampleMeshTriangleSampler(sampler, out) {
+            if (!sampler || !sampler.total || sampler.total <= 0) return false;
+            const { posAttr, indices, cumulative, total } = sampler;
+            const r = Math.random() * total;
+
+            // binary search
+            let lo = 0, hi = cumulative.length - 1;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (r <= cumulative[mid]) hi = mid;
+                else lo = mid + 1;
+            }
+            const t = lo;
+
+            const i0 = indices ? indices[t * 3 + 0] : (t * 3 + 0);
+            const i1 = indices ? indices[t * 3 + 1] : (t * 3 + 1);
+            const i2 = indices ? indices[t * 3 + 2] : (t * 3 + 2);
+
+            const v0 = new THREE.Vector3().fromBufferAttribute(posAttr, i0);
+            const v1 = new THREE.Vector3().fromBufferAttribute(posAttr, i1);
+            const v2 = new THREE.Vector3().fromBufferAttribute(posAttr, i2);
+
+            // random barycentric (uniform over triangle)
+            const u = Math.random();
+            const v = Math.random();
+            const su = Math.sqrt(u);
+            const b0 = 1 - su;
+            const b1 = su * (1 - v);
+            const b2 = su * v;
+
+            out.copy(v0.multiplyScalar(b0).add(v1.multiplyScalar(b1)).add(v2.multiplyScalar(b2)));
+            return true;
+        }
+
+        function rebuildLanternSamplers() {
+            LANTERN_SAMPLERS = { RIB: [], HOOP: [], STICK: [], TASSEL: [], HARDWARE: [], BODY: [] };
+            if (!lanternGroup) return;
+
+            // ensure matrices are current
+            mainGroup.updateMatrixWorld(true);
+            lanternGroup.updateMatrixWorld(true);
+
+            const root = (lanternGroup.userData && lanternGroup.userData.sampleRoot) ? lanternGroup.userData.sampleRoot : lanternGroup;
+
+            root.traverse((obj) => {
+                if (!obj || !obj.isMesh) return;
+                if (obj.userData && obj.userData.sampleIgnore) return;
+                const g = obj.geometry;
+                if (!g || !g.attributes || !g.attributes.position) return;
+
+                const tag = (obj.userData && obj.userData.sampleTag) ? obj.userData.sampleTag : "BODY";
+                if (!LANTERN_SAMPLERS[tag]) LANTERN_SAMPLERS[tag] = [];
+
+                const sampler = buildMeshTriangleSampler(obj);
+                LANTERN_SAMPLERS[tag].push({ mesh: obj, sampler });
+            });
+        }
+
+        function sampleLanternPoint(outVec3, preferredTag = null) {
+            if (!LANTERN_SAMPLERS) return false;
+
+            const tag = preferredTag || _pickWeightedTag();
+            let bucket = (LANTERN_SAMPLERS[tag] && LANTERN_SAMPLERS[tag].length) ? LANTERN_SAMPLERS[tag] : null;
+
+            if (!bucket || bucket.length === 0) {
+                // fall back to any available bucket (prefer RIB/HOOP to keep a clean skeleton)
+                const order = ["RIB", "HOOP", "HARDWARE", "STICK", "TASSEL", "BODY"];
+                for (const k of order) {
+                    if (LANTERN_SAMPLERS[k] && LANTERN_SAMPLERS[k].length) { bucket = LANTERN_SAMPLERS[k]; break; }
+                }
+            }
+
+            if (!bucket || bucket.length === 0) return false;
+
+            const picked = bucket[Math.floor(Math.random() * bucket.length)];
+            sampleMeshTriangleSampler(picked.sampler, _lanternSamplePos); // mesh-local
+            picked.mesh.localToWorld(_lanternSamplePos);  // world
+            mainGroup.worldToLocal(_lanternSamplePos);    // mainGroup-local (particle coord space)
+            outVec3.copy(_lanternSamplePos);
+            return true;
+        }
+    
 
         async function init() {
             initThree();            
@@ -207,19 +569,35 @@
             setupLights();          
             createTextures();       
             createMaterials(); 
-            
-            createGalaxyBackground(); 
-            createHeartBackground();
-            
-            createParticles();      
             setupPostProcessing();
             setupEvents();          
-            setupLetterSystem(); 
-            
-            switchTheme(0);
 
-            initMediaPipe().catch(console.warn);
+            loadStoredSettings();
+            applyQualitySettings(STATE.quality.settings, { save: false, rebuild: false, updateUI: true });
 
+            createEmberBackground();
+            createSparkBackground();
+            createPetalBackground();
+            createLanternBody();
+            rebuildLanternSamplers();
+            createParticles();
+            switchTheme(STATE.currentThemeIndex, { save: false });
+            updateView();
+
+            await loadLocalContent();
+            if (GESTURE_ENABLED) {
+                // Bind first user gesture to camera start (mobile-friendly).
+                bindFirstGestureToCamera();
+
+                // Warm up mediapipe; if camera is blocked (mobile), we will prompt on first gesture.
+                initMediaPipe().catch((err) => {
+                    console.warn('init mediapipe failed', err);
+                    ensureCameraPromptUI('点击“启用摄像头”以开始手势交互（手机上通常需要先点击一次）。');
+                });
+
+                // If nothing happens within a moment, show the prompt proactively.
+                setTimeout(() => { if (!isStreamLive(cameraStream)) ensureCameraPromptUI(); }, 1200);
+            }
             const loader = document.getElementById('loader');
             loader.style.opacity = 0;
             setTimeout(() => loader.remove(), 1200);
@@ -229,8 +607,8 @@
 
         function initThree() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(CONFIG.colors.bg);
-            scene.fog = new THREE.FogExp2(CONFIG.colors.bg, 0.012); 
+            scene.background = new THREE.Color(THEMES[0].bg);
+            scene.fog = new THREE.FogExp2(THEMES[0].fog, 0.012); 
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
             camera.position.set(0, 0, CONFIG.camera.z); 
@@ -239,13 +617,13 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.toneMapping = THREE.ACESFilmicToneMapping; 
-            renderer.toneMappingExposure = 1.0; 
+            renderer.toneMappingExposure = 1.12; 
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             bgGroup = new THREE.Group(); scene.add(bgGroup);
             mainGroup = new THREE.Group(); mainGroup.rotation.x = 0.1; scene.add(mainGroup);
-            starGroup = new THREE.Group(); mainGroup.add(starGroup);
             photoMeshGroup = new THREE.Group(); mainGroup.add(photoMeshGroup);
+            letterMeshGroup = new THREE.Group(); mainGroup.add(letterMeshGroup);
         }
 
         function setupEnvironment() {
@@ -255,80 +633,597 @@
         }
 
         function setupLights() {
-            scene.add(new THREE.AmbientLight(0xffffff, 0.2));
-            const bottomLight = new THREE.PointLight(CONFIG.colors.gold, 3, 40);
-            bottomLight.position.set(0, -10, 10);
-            mainGroup.add(bottomLight);
-            
-            const spotGold = new THREE.SpotLight(0xfff0dd, 800);
-            spotGold.position.set(40, 60, 40); spotGold.angle = 0.4; spotGold.decay = 2;
-            scene.add(spotGold);
-            
-            const spotBlue = new THREE.SpotLight(0x4455ff, 400);
-            spotBlue.position.set(-40, 10, -30); spotBlue.lookAt(0,0,0);
-            scene.add(spotBlue);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+            const coreLight = new THREE.PointLight(THEMES[0].lanternGlow, 3.2, 55);
+            coreLight.position.set(0, 0, 8);
+            mainGroup.add(coreLight);
+
+            const warmSpot = new THREE.SpotLight(0xffd2a0, 650);
+            warmSpot.position.set(32, 50, 30); warmSpot.angle = 0.45; warmSpot.decay = 2;
+            scene.add(warmSpot);
+
+            const rimLight = new THREE.SpotLight(0xffb36b, 260);
+            rimLight.position.set(-35, 15, -35); rimLight.lookAt(0, 0, 0);
+            scene.add(rimLight);
         }
 
         function setupPostProcessing() {
-            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloom.threshold = 0.75; bloom.strength = 0.5; bloom.radius = 0.5;
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
+            bloomPass.threshold = 0.62; bloomPass.strength = QUALITY_PRESETS.medium.bloomStrength; bloomPass.radius = 0.65;
+            // Remember bloom base for dynamic focus tuning
+            STATE.quality = STATE.quality || {}; STATE.quality.bloomThresholdBase = bloomPass.threshold; STATE.quality.bloomRadiusBase = bloomPass.radius;
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
-            composer.addPass(bloom);
+            composer.addPass(bloomPass);
+        }
+
+        function createLanternTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f7efe3';
+            ctx.fillRect(0, 0, 256, 256);
+            const shade = ctx.createLinearGradient(0, 0, 0, 256);
+            shade.addColorStop(0, 'rgba(0,0,0,0.18)');
+            shade.addColorStop(0.5, 'rgba(255,255,255,0.16)');
+            shade.addColorStop(1, 'rgba(0,0,0,0.2)');
+            ctx.fillStyle = shade;
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+            ctx.lineWidth = 6;
+            for (let x = 12; x < 256; x += 24) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 256);
+                ctx.stroke();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 1);
+            return tex;
+        }
+
+        function createCoupletTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f7efe3';
+            ctx.fillRect(0, 0, 128, 256);
+            ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(6, 6, 116, 244);
+            ctx.lineWidth = 2;
+            ctx.strokeRect(16, 16, 96, 224);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            return tex;
+        }
+
+        function createEmberTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createPetalTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(32, 8);
+            ctx.bezierCurveTo(18, 12, 12, 28, 18, 42);
+            ctx.bezierCurveTo(24, 56, 40, 56, 46, 42);
+            ctx.bezierCurveTo(52, 28, 46, 12, 32, 8);
+            ctx.closePath();
+            ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+            grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 128, 128);
+            return new THREE.CanvasTexture(canvas);
         }
 
         function createTextures() {
-            const hCvs = document.createElement('canvas'); hCvs.width = 64; hCvs.height = 64;
-            const hCtx = hCvs.getContext('2d');
-            hCtx.fillStyle = '#ffffff';
-            hCtx.beginPath();
-            hCtx.moveTo(32, 20);
-            hCtx.bezierCurveTo(32, 17, 30, 10, 20, 10);
-            hCtx.bezierCurveTo(10, 10, 10, 25, 10, 25);
-            hCtx.bezierCurveTo(10, 35, 20, 42, 32, 55);
-            hCtx.bezierCurveTo(44, 42, 54, 35, 54, 25);
-            hCtx.bezierCurveTo(54, 25, 54, 10, 44, 10);
-            hCtx.bezierCurveTo(36, 10, 32, 17, 32, 20);
-            hCtx.fill();
-            heartTexture = new THREE.CanvasTexture(hCvs);
+            lanternTexture = createLanternTexture();
+            coupletTexture = createCoupletTexture();
+            emberTexture = createEmberTexture();
+            petalTexture = createPetalTexture();
+            glowTexture = createGlowTexture();
         }
 
         function createMaterials() {
-            matLib.gold = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.15, envMapIntensity: 2.5, emissive: 0x664400, emissiveIntensity: 0.2 });
-            matLib.pinkMain = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.pinkHot, metalness: 0.25, roughness: 0.15, clearcoat: 1.0, emissive: 0x440022, emissiveIntensity: 0.3 });
-            matLib.pinkSoft = new THREE.MeshStandardMaterial({ color: CONFIG.colors.pinkSoft, metalness: 0.1, roughness: 0.4, emissive: 0x442233, emissiveIntensity: 0.2 });
-            matLib.starGold = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xffaa00, emissiveIntensity: 2.0, metalness: 1.0, roughness: 0 });
-            matLib.frameGold = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.2 });
-            matLib.framePink = new THREE.MeshStandardMaterial({ color: CONFIG.colors.pinkHot, metalness: 0.4, roughness: 0.25, emissive: 0x330018, emissiveIntensity: 0.25 });
+            const baseTheme = THEMES[0];
 
-            matLib.snowBorder = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.BackSide });
-            matLib.dust = new THREE.MeshBasicMaterial({ color: 0xffffee, blending: THREE.AdditiveBlending });
-            matLib.heartFlake = new THREE.PointsMaterial({ color: CONFIG.colors.pinkHot, size: 1.4, map: heartTexture, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+            matLib.lanternBody = new THREE.MeshPhysicalMaterial({
+                color: baseTheme.lantern,
+                metalness: 0.2,
+                roughness: 0.35,
+                clearcoat: 0.6,
+                transmission: 0.12,
+                thickness: 1.4,
+                map: lanternTexture,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: 0.55
+            });
+            matLib.lanternGold = new THREE.MeshStandardMaterial({
+                color: baseTheme.accent,
+                metalness: 1.0,
+                roughness: 0.2,
+                emissive: baseTheme.accentDeep,
+                emissiveIntensity: 0.4
+            });
+            matLib.knot = new THREE.MeshStandardMaterial({
+                color: baseTheme.knot,
+                metalness: 0.4,
+                roughness: 0.35,
+                emissive: baseTheme.accentDeep,
+                emissiveIntensity: 0.2
+            });
+            matLib.firecracker = new THREE.MeshStandardMaterial({
+                color: baseTheme.firecracker,
+                metalness: 0.2,
+                roughness: 0.45,
+                emissive: baseTheme.accentDeep,
+                emissiveIntensity: 0.5
+            });
+            matLib.couplet = new THREE.MeshStandardMaterial({
+                map: coupletTexture,
+                color: baseTheme.couplet,
+                metalness: 0.1,
+                roughness: 0.6
+            });
+            matLib.coin = new THREE.MeshStandardMaterial({
+                color: baseTheme.coin,
+                metalness: 0.9,
+                roughness: 0.25,
+                emissive: baseTheme.accentDeep,
+                emissiveIntensity: 0.35
+            });
+            matLib.bead = new THREE.MeshStandardMaterial({
+                color: baseTheme.bead,
+                metalness: 0.5,
+                roughness: 0.2,
+                emissive: baseTheme.accentDeep,
+                emissiveIntensity: 0.4
+            });
+
+            matLib.dust = new THREE.MeshBasicMaterial({
+                color: baseTheme.dust,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.8
+            });
+            matLib.photoFrame = new THREE.MeshStandardMaterial({
+                color: baseTheme.accent,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+            matLib.photoBorder = new THREE.MeshBasicMaterial({
+                color: baseTheme.dust,
+                transparent: true,
+                opacity: 0.55,
+                side: THREE.BackSide
+            });
+
+            matLib.emberFlake = new THREE.PointsMaterial({
+                color: baseTheme.ember,
+                size: 1.0,
+                map: emberTexture,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            matLib.sparkFlake = new THREE.PointsMaterial({
+                color: baseTheme.spark,
+                size: 0.9,
+                map: emberTexture,
+                transparent: true,
+                opacity: 0.65,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            matLib.petalFlake = new THREE.PointsMaterial({
+                color: baseTheme.petal,
+                size: 1.6,
+                map: petalTexture,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
         }
+
+        function createLanternBody() {
+            if (lanternGroup) {
+                mainGroup.remove(lanternGroup);
+            }
+            lanternGroup = new THREE.Group();
+            lanternGroup.name = "LanternGroup";
+
+            // ============================================================
+            // Lantern "skeleton" inspired by common wireframe lantern models:
+            // meridian ribs + latitude hoops + top/bottom hardware + tassel
+            // (参考：常见灯笼线框结构/3D线框模型）
+            // ============================================================
+
+            // 说明：原始 CONFIG.lantern.height=24 会导致骨架呈现“瘦高”，因此骨架使用独立比例
+const baseRadius = CONFIG.lantern.radius ?? 3.2;
+const baseNeck = CONFIG.lantern.neckRadius ?? (baseRadius * 0.28);
+
+// 骨架外形参数：默认更“矮胖”更像灯笼（可在 CONFIG.lantern.* 覆盖）
+const skeletonAspect = CONFIG.lantern.skeletonAspect ?? 1.25; // height / radius（1.25~1.6较像传统灯笼）
+const radius = CONFIG.lantern.skeletonRadius ?? (baseRadius * (CONFIG.lantern.skeletonRadiusScale ?? 1.15));
+const h = CONFIG.lantern.skeletonHeight ?? (radius * skeletonAspect);
+const half = h / 2;
+const neck = CONFIG.lantern.skeletonNeckRadius ?? (baseNeck * 0.95);
+
+
+            const ribCount = CONFIG.lantern.ribCount ?? 16;
+            const hoopCount = CONFIG.lantern.hoopCount ?? 5;
+
+            const frameR = CONFIG.lantern.frameRadius ?? 0.09; // 骨架管径（采样后会表现成更“线框”）
+            const tubeSeg = Math.max(96, CONFIG.lantern.segments ?? 96);
+
+            // 轮廓函数：t=0..1（下->上）
+            // 让上下更收，中间更鼓，且整体更像你给的“卡通灯笼”图
+            const bulgePow = CONFIG.lantern.bulgePow ?? 0.56;  // 0.55~0.75
+            function yAt(t) { return (t - 0.5) * h; }
+            function rAt(t) {
+                const s = Math.sin(Math.PI * t);
+                const bulge = Math.pow(Math.max(0, s), bulgePow);
+                return neck + (radius - neck) * bulge;
+            }
+
+            // 材质：最终你看到的是粒子，但 mesh 仍用于采样
+            const frameMat = matLib?.lanternGold ?? new THREE.MeshStandardMaterial({
+                color: 0xffc84a,
+                roughness: 0.35,
+                metalness: 0.75,
+                emissive: 0x251200,
+                emissiveIntensity: 0.25
+            });
+
+            const redMat = matLib?.knot ?? new THREE.MeshStandardMaterial({
+                color: 0xd40000,
+                roughness: 0.75,
+                metalness: 0.05,
+                emissive: 0x200000,
+                emissiveIntensity: 0.35
+            });
+
+            // === Skeleton root: only sample from this subtree for a clean wireframe look ===
+            const skeleton = new THREE.Group();
+            skeleton.name = "LanternSkeleton";
+            lanternGroup.add(skeleton);
+            lanternGroup.userData.sampleRoot = skeleton;
+
+            // --- 1) Meridian ribs (纵向骨条) ---
+            // ribs从t0到t1（避开上下金属盖的空间）
+            const t0 = 0.08, t1 = 0.92;
+            // --- Sampling skin (隐形外壳): 用于让“照片/书信/小组件”可以在灯笼外壳面上乱序分布，而不仅沿骨架线条 ---
+            // 注意：此网格保持不可见，仅用于 MeshSurfaceSampler 采样
+            const skinProfile = [];
+            const skinSteps = 28;
+            for (let k = 0; k <= skinSteps; k++) {
+                const tt = t0 + (t1 - t0) * (k / skinSteps);
+                skinProfile.push(new THREE.Vector2(rAt(tt) * 1.02, yAt(tt)));
+            }
+            const skinGeo = new THREE.LatheGeometry(skinProfile, Math.max(32, CONFIG.lantern.segments));
+            const skinMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0, depthWrite: false });
+            const skin = new THREE.Mesh(skinGeo, skinMat);
+            skin.userData.sampleTag = "BODY";
+            skin.visible = false;
+            skeleton.add(skin);
+
+            const ribSteps = 18;
+            const ribTubeR = frameR;
+            for (let i = 0; i < ribCount; i++) {
+                const ang = (i / ribCount) * Math.PI * 2;
+                const pts = [];
+                for (let k = 0; k <= ribSteps; k++) {
+                    const t = t0 + (t1 - t0) * (k / ribSteps);
+                    const y = yAt(t);
+                    const r = rAt(t);
+                    pts.push(new THREE.Vector3(Math.cos(ang) * r, y, Math.sin(ang) * r));
+                }
+                const curve = new THREE.CatmullRomCurve3(pts);
+                const geo = new THREE.TubeGeometry(curve, tubeSeg, ribTubeR, 6, false);
+                const rib = new THREE.Mesh(geo, frameMat);
+                rib.userData.sampleTag = "RIB";
+                skeleton.add(rib);
+            }
+
+            // --- 2) Latitude hoops (横向箍) ---
+            // 让线框更像灯笼结构：中间更密，上下少一些
+            const hoopTs = [];
+            for (let j = 1; j <= hoopCount; j++) {
+                // 分布：更偏向中间（ease）
+                const u = j / (hoopCount + 1);
+                const eased = 0.5 - 0.5 * Math.cos(Math.PI * u); // 0..1
+                hoopTs.push(t0 + (t1 - t0) * eased);
+            }
+            const hoopTubeR = frameR * 0.95;
+            const hoopRadSeg = 10;
+            const hoopTubSeg = Math.max(64, Math.floor(tubeSeg * 0.75));
+            for (const t of hoopTs) {
+                const y = yAt(t);
+                const r = rAt(t);
+                const hoopGeo = new THREE.TorusGeometry(r, hoopTubeR, hoopRadSeg, hoopTubSeg);
+                const hoop = new THREE.Mesh(hoopGeo, frameMat);
+                hoop.position.y = y;
+                hoop.userData.sampleTag = "HOOP";
+                skeleton.add(hoop);
+            }
+
+            // --- 3) Top/Bottom rings (上/下金边) ---
+            const topRingT = 0.86, botRingT = 0.14;
+            const ringR = frameR * 1.25;
+            const ringGeoTop = new THREE.TorusGeometry(rAt(topRingT) + ringR * 0.65, ringR, 10, hoopTubSeg);
+            const topRing = new THREE.Mesh(ringGeoTop, frameMat);
+            topRing.position.y = yAt(topRingT);
+            topRing.userData.sampleTag = "HARDWARE";
+            skeleton.add(topRing);
+
+            const ringGeoBot = new THREE.TorusGeometry(rAt(botRingT) + ringR * 0.65, ringR, 10, hoopTubSeg);
+            const botRing = new THREE.Mesh(ringGeoBot, frameMat);
+            botRing.position.y = yAt(botRingT);
+            botRing.userData.sampleTag = "HARDWARE";
+            skeleton.add(botRing);
+
+            // --- 4) Caps + knobs (上下盖 + 小球) ---
+            const capH = CONFIG.lantern.capHeight ?? 0.55;
+            const capGeo = new THREE.CylinderGeometry(neck * 1.05, neck * 1.28, capH, 28);
+            const topCap = new THREE.Mesh(capGeo, frameMat);
+            topCap.position.y = half + capH * 0.55;
+            topCap.userData.sampleTag = "HARDWARE";
+            skeleton.add(topCap);
+
+            const botCap = new THREE.Mesh(capGeo, frameMat);
+            botCap.position.y = -half - capH * 0.55;
+            botCap.scale.set(1.05, 0.92, 1.05);
+            botCap.userData.sampleTag = "HARDWARE";
+            skeleton.add(botCap);
+
+            const ballGeo = new THREE.SphereGeometry(0.35, 18, 18);
+            const topBall = new THREE.Mesh(ballGeo, redMat);
+            topBall.position.y = half + capH * 1.25;
+            topBall.userData.sampleTag = "HARDWARE";
+            skeleton.add(topBall);
+
+            const bottomBall = new THREE.Mesh(ballGeo, redMat);
+            bottomBall.position.y = -half - capH * 1.2;
+            bottomBall.userData.sampleTag = "HARDWARE";
+            skeleton.add(bottomBall);
+
+            // --- 5) Stick (底部竖杆) ---
+            // 你参考图里是长柄（不是传统流苏），这里按“长柄+下端线束”做
+            const stickLen = CONFIG.lantern.stickLen ?? 10.5;
+const stickR = CONFIG.lantern.stickRadius ?? 0.28;
+
+// 将“单一圆柱杆”改为“多根竖向细 tube 组成的条纹杆骨架”
+const stickStripes = CONFIG.lantern.stickStripes ?? 12;              // 条纹数量
+const stripeRadius = CONFIG.lantern.stickStripeRadius ?? (stickR * 0.22);
+const stripeOffset = CONFIG.lantern.stickStripeOffset ?? (stickR * 0.78);
+
+const stickCenterY = bottomBall.position.y - stickLen / 2 - 0.15;
+
+const stickGroup = new THREE.Group();
+stickGroup.name = "StickStripes";
+stickGroup.position.y = stickCenterY;
+skeleton.add(stickGroup);
+
+// 直线曲线（局部坐标，围绕y轴）
+const stickCurve = new THREE.LineCurve3(
+    new THREE.Vector3(0, stickLen / 2, 0),
+    new THREE.Vector3(0, -stickLen / 2, 0)
+);
+
+const stickTubeSeg = 20;
+const stickRadSeg = 8;
+
+for (let i = 0; i < stickStripes; i++) {
+    const a = (i / stickStripes) * Math.PI * 2;
+    const tubeGeo = new THREE.TubeGeometry(stickCurve, stickTubeSeg, stripeRadius, stickRadSeg, false);
+    const tube = new THREE.Mesh(tubeGeo, frameMat);
+    tube.position.set(Math.cos(a) * stripeOffset, 0, Math.sin(a) * stripeOffset);
+    tube.userData.sampleTag = "STICK";
+    stickGroup.add(tube);
+}
+// --- 6) Tassel / ribbon bundle (底部绸带/线束：让粒子轮廓“有尾巴”更像灯笼) ---
+            const tasselLen = CONFIG.lantern.tasselLen ?? 8.8;
+            const tasselTopY = stickCenterY - stickLen / 2 - 0.3;
+
+            // 多根竖线（像参考图杆下端的纵向条纹/线束）
+            const threadCount = CONFIG.lantern.tasselThreads ?? 18;
+            const threadGeo = new THREE.CylinderGeometry(0.045, 0.045, tasselLen * 0.9, 6);
+            for (let i = 0; i < threadCount; i++) {
+                const th = new THREE.Mesh(threadGeo, frameMat);
+                const a = (i / threadCount) * Math.PI * 2;
+                th.position.set(Math.cos(a) * 0.35, tasselTopY - tasselLen * 0.45, Math.sin(a) * 0.35);
+                th.userData.sampleTag = "TASSEL";
+                skeleton.add(th);
+            }
+
+            // 两条交叉绸带（薄片也可采样；为了不让采样都落到Plane上，设置较低权重即可）
+            const tasselW = CONFIG.lantern.tasselWidth ?? 1.2;
+            const ribbonGeo = new THREE.PlaneGeometry(tasselW, tasselLen, 1, 10);
+            for (let i = 0; i < 2; i++) {
+                const ribbon = new THREE.Mesh(ribbonGeo, redMat);
+                ribbon.position.set(0, tasselTopY - tasselLen / 2, 0);
+                ribbon.rotation.y = i === 0 ? Math.PI * 0.25 : -Math.PI * 0.25;
+                ribbon.userData.sampleTag = "TASSEL";
+                skeleton.add(ribbon);
+            }
+
+            // --- 7) Emblem + halo (可留可去；采样忽略 halo) ---
+            const emblemGeo = new THREE.CylinderGeometry(1.05, 1.05, 0.16, 28);
+            const emblem = new THREE.Mesh(emblemGeo, matLib?.coin ?? frameMat);
+            emblem.position.set(0, 0, rAt(0.5) + 0.15);
+            emblem.userData.sampleTag = "HARDWARE";
+            skeleton.add(emblem);
+
+            const haloMat = new THREE.MeshBasicMaterial({
+                map: glowTexture,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.55,
+                color: THEMES?.[0]?.ember ?? 0xff7a2a,
+                depthWrite: false
+            });
+            const halo = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), haloMat);
+            halo.position.z = 0.2;
+            halo.userData.sampleIgnore = true; // 不参与采样，避免点落在大平面上
+            emblem.add(halo);
+
+            STATE.emblemMesh = emblem;
+            STATE.emblemHaloMesh = halo;
+
+            // --- 8) 内部暖光（不影响采样，但提升氛围） ---
+            const innerLight = new THREE.PointLight(0xff9a3a, 1.15, 30, 2.0);
+            innerLight.position.set(0, 0.25, 0);
+            lanternGroup.add(innerLight);
+
+            mainGroup.add(lanternGroup);
+
+            // Final presentation uses particles: keep mesh hidden but usable for sampling
+            lanternGroup.traverse(o => { if (o.isMesh) o.visible = false; });
+        }
+
+
+
+        // ================================
+        // Placement disorder: make "小组件/照片/书信" more random (mosaic) while still forming the lantern outline
+        // ================================
+        const DISORDER_BY_TYPE = {
+            PHOTO:       { body: 0.78, rib: 0.18, hoop: 0.04, radialOut: 0.95, jitter: 0.75, jitterY: 0.45, yaw: 0.85, roll: 1.25, pitch: 0.35 },
+            LETTER:      { body: 0.75, rib: 0.20, hoop: 0.05, radialOut: 0.80, jitter: 0.65, jitterY: 0.35, yaw: 0.70, roll: 0.95, pitch: 0.25 },
+            FIRECRACKER: { body: 0.58, rib: 0.28, hoop: 0.14, radialOut: 0.55, jitter: 0.55, jitterY: 0.28 },
+            KNOT:        { body: 0.55, rib: 0.30, hoop: 0.15, radialOut: 0.48, jitter: 0.50, jitterY: 0.25 },
+            COIN:        { body: 0.52, rib: 0.32, hoop: 0.16, radialOut: 0.42, jitter: 0.46, jitterY: 0.22 },
+            COUPLET:     { body: 0.50, rib: 0.33, hoop: 0.17, radialOut: 0.45, jitter: 0.58, jitterY: 0.26 }
+        };
+
+        function pickSampleTagForType(type) {
+            const cfg = DISORDER_BY_TYPE[type];
+            if (!cfg) return null;
+            const r = Math.random();
+            if (r < cfg.body) return "BODY";
+            if (r < cfg.body + cfg.rib) return "RIB";
+            return "HOOP";
+        }
+
+        function applyLanternDisorder(pos, type, mesh) {
+            const cfg = DISORDER_BY_TYPE[type];
+            if (!cfg) return;
+
+            // outward push: helps fill the silhouette outline (mosaic look)
+            _tempVec.set(pos.x, 0, pos.z);
+            const len = _tempVec.length();
+            if (len > 1e-6) {
+                _tempVec.multiplyScalar(1 / len);
+                const out = cfg.radialOut || 0;
+                pos.addScaledVector(_tempVec, out * (0.6 + 0.8 * Math.random()));
+            }
+
+            // positional jitter: break "沿线条太规整"
+            const j = cfg.jitter || 0;
+            const jy = cfg.jitterY || 0;
+            if (j > 0) {
+                pos.x += (Math.random() - 0.5) * 2 * j;
+                pos.z += (Math.random() - 0.5) * 2 * j;
+            }
+            if (jy > 0) {
+                pos.y += (Math.random() - 0.5) * 2 * jy;
+            }
+
+            // orientation variety (TREE mode baseline) for photos/letters
+            if (mesh && (type === 'PHOTO' || type === 'LETTER')) {
+                const yawBase = Math.atan2(pos.x, pos.z); // plane default normal +Z => rotate Y to face outward
+                mesh.rotation.set(
+                    (Math.random() - 0.5) * 2 * (cfg.pitch || 0.2),
+                    yawBase + (Math.random() - 0.5) * 2 * (cfg.yaw || 0.6),
+                    (Math.random() - 0.5) * 2 * (cfg.roll || 0.8)
+                );
+            }
+        }
+
+
 
         class Particle {
             constructor(mesh, type, isDust = false) {
                 this.mesh = mesh; this.type = type; this.isDust = isDust;
                 this.posTree = new THREE.Vector3(); this.posScatter = new THREE.Vector3();
-                this.baseScale = mesh.scale.x; this.offset = Math.random() * 100; this.speed = 0.5 + Math.random();
+                this.baseScale = mesh.scale.x; this.focusScale = mesh.userData.focusScale || 5.0; this.baseSize = mesh.userData.baseSize || null; this.offset = Math.random() * 100; this.speed = 0.5 + Math.random();
+                // Photos/letters: add a subtle random scale-up during SCATTER (palm open)
+                this.scatterScaleBonus = (type === 'PHOTO') ? (0.18 + Math.random() * 0.28) : (type === 'LETTER') ? (0.12 + Math.random() * 0.22) : 0.0;
                 if (mesh.material && mesh.material.emissive) { this.baseEmissive = mesh.material.emissive.clone(); this.hasEmissive = true; }
                 this.calculatePositions();
             }
 
             calculatePositions() {
-                const h = CONFIG.particles.lanternHeight;
-                let t = Math.random();
-                t = Math.pow(t, 0.85);
-                const y = (t * h) - h / 2;
-                const theta = Math.random() * Math.PI * 2;
-                const profile = Math.sin(Math.PI * t);
-                const radius = CONFIG.particles.lanternRadius * (0.35 + 0.65 * profile);
-                const r = radius * Math.sqrt(Math.random());
-                this.posTree.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+                // Prefer sampling from the lantern mesh surface (so changing the mesh changes the particle silhouette)
+                if (!this.isDust && LANTERN_SAMPLERS) {
+                    const preferred = pickSampleTagForType(this.type);
+                    const ok = sampleLanternPoint(this.posTree, preferred);
+                    if (ok) {
+                        applyLanternDisorder(this.posTree, this.type, this.mesh);
+                        const rScatter = 12 + Math.random() * 18;
+                        const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+                        this.posScatter.set(
+                            rScatter * Math.sin(phi) * Math.cos(theta),
+                            rScatter * Math.sin(phi) * Math.sin(theta),
+                            rScatter * Math.cos(phi)
+                        );
+                        return;
+                    }
+                }
 
-                const rScatter = this.isDust ? (15 + Math.random() * 25) : (10 + Math.random() * 15);
-                const phi = Math.acos(2 * Math.random() - 1);
-                this.posScatter.set(rScatter * Math.sin(phi) * Math.cos(theta), rScatter * Math.sin(phi) * Math.sin(theta), rScatter * Math.cos(phi));
+                // Fallback: original parametric lantern profile
+                const h = CONFIG.lantern.height;
+                let t = Math.random();
+                const emphasizeRings = !this.isDust && this.type !== 'PHOTO' && this.type !== 'LETTER' && Math.random() < 0.35;
+                const emphasizeRibs = !this.isDust && this.type !== 'PHOTO' && this.type !== 'LETTER' && Math.random() < 0.25;
+
+                if (emphasizeRings) {
+                    t = Math.random() < 0.5 ? 0.18 : 0.82;
+                    t += (Math.random() - 0.5) * 0.05;
+                }
+
+                const y = (t - 0.5) * h;
+                const profile = Math.sin(Math.PI * t);
+                const baseRadius = CONFIG.lantern.radius * (0.2 + 0.8 * profile);
+                const rimJitter = emphasizeRings ? 1.02 + Math.random() * 0.05 : 0.92 + Math.random() * 0.08;
+                const ribs = 10;
+                const angle = emphasizeRibs
+                    ? Math.round(Math.random() * (ribs - 1)) / ribs * Math.PI * 2
+                    : Math.random() * Math.PI * 2;
+                const radius = baseRadius * rimJitter;
+                this.posTree.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+
+                const rScatter = this.isDust ? (18 + Math.random() * 28) : (12 + Math.random() * 18);
+                const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+                this.posScatter.set(
+                    rScatter * Math.sin(phi) * Math.cos(theta),
+                    rScatter * Math.sin(phi) * Math.sin(theta),
+                    rScatter * Math.cos(phi)
+                );
             }
 
             update(dt, time, mode, focusTargetMesh, invMatrix) {
@@ -338,212 +1233,373 @@
                     _targetVec.copy(this.posScatter).multiplyScalar(STATE.scatterScale);
                     target = _targetVec;
                 }
-                else if (mode === 'LETTER') target = this.posScatter;
                 else if (mode === 'FOCUS') {
                     if (this.mesh === focusTargetMesh && invMatrix) {
-                        _targetVec.set(0, 0, CONFIG.camera.z - 15).applyMatrix4(invMatrix);
+                        _targetVec.set(0, 0, CONFIG.camera.z - FOCUS_DISTANCE).applyMatrix4(invMatrix);
                         target = _targetVec;
-                        lerpSpeed = 6.0; this.mesh.lookAt(camera.position); s = this.baseScale * 5.0;
-                    } else { target = this.posScatter; s = 0.01; }
+                        lerpSpeed = 6.0; this.mesh.lookAt(camera.position);
+                        if (this.baseSize) {
+                            const distance = FOCUS_DISTANCE;
+                            const vHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * distance;
+                            const vWidth = vHeight * camera.aspect;
+                            const isPortrait = window.innerWidth < window.innerHeight;
+                        // View fit tuning:
+                        // - Mobile竖屏：照片更大（更易看清）
+                        // - 电脑横屏：书信横幅更小（避免过大占满画面）
+                        let fit = isPortrait ? 0.88 : 0.8;
+                        if (isPortrait && this.type === 'PHOTO') fit = 1.52;
+                        if (!isPortrait && this.type === 'LETTER') fit = 0.35;
+                            const scaleX = (vWidth * fit) / this.baseSize.x;
+                            const scaleY = (vHeight * fit) / this.baseSize.y;
+                            s = Math.min(scaleX, scaleY);
+                        } else {
+                            s = this.baseScale * this.focusScale;
+                        }
+                    } else { target = this.posTree; s = this.baseScale * 0.12; }
                 } else {
                     target = this.posTree;
                 }
 
                 _tempVec.copy(target);
                 if(mode === 'TREE') { 
-                    const floatScale = (STATE.currentThemeIndex === 1) ? 0.3 : 0.15;
+                    const floatScale = 0.18;
                     _tempVec.y += Math.sin(time * this.speed + this.offset) * floatScale; 
-                    _tempVec.x += Math.cos(time * 0.5 * this.speed + this.offset) * 0.1; 
+                    _tempVec.x += Math.cos(time * 0.5 * this.speed + this.offset) * 0.08; 
                 }
                 this.mesh.position.lerp(_tempVec, lerpSpeed * dt);
 
                 if (this.hasEmissive && mode === 'TREE' && !this.isDust) {
-                    const blink = Math.sin(time * 2 + this.offset);
-                    const maxEmit = (STATE.currentThemeIndex === 1) ? 3.0 : 2.5;
-                    this.mesh.material.emissiveIntensity = blink > 0.5 ? (1.0 + (blink - 0.5) * maxEmit) : 0.4;
+                    const flicker = 0.6 + 0.4 * Math.sin(time * 2 + this.offset);
+                    this.mesh.material.emissiveIntensity = 0.6 + flicker * 1.8;
                 }
 
                 if (mode !== 'FOCUS') {
                     if (this.isDust) s = this.baseScale * (0.5 + 0.5 * Math.sin(time * 3 + this.offset));
-                    else if ((mode === 'SCATTER' || mode === 'LETTER') && this.type === 'PHOTO') s = this.baseScale * 2.5;
-                    
-                    if (STATE.currentThemeIndex === 1 && mode === 'TREE' && !this.isDust && this.type !== 'PHOTO') {
-                            s *= (1.0 + 0.2 * Math.sin(time * 3 + this.offset));
-                    }
+                }
+                // SCATTER: photos/letters randomly scale up a bit as fingers spread
+                if (mode === 'SCATTER' && !this.isDust && this.scatterScaleBonus > 0) {
+                    const openAmt = THREE.MathUtils.clamp((STATE.scatterScale - 1.0) / 1.0, 0.0, 1.0);
+                    s = this.baseScale * (1.0 + openAmt * this.scatterScaleBonus);
                 }
                 this.mesh.scale.lerp(_tempVec.set(s,s,s), 5*dt);
             }
         }
 
-        function createGalaxyBackground() {
-            const geometry = new THREE.BufferGeometry(), count = 3000;
-            const pos = new Float32Array(count * 3), sizes = new Float32Array(count), colors = new Float32Array(count * 3);
-            const c1 = new THREE.Color(0x88aaff), c2 = new THREE.Color(0xffffee), c3 = new THREE.Color(0xffd700);
-            for(let i=0; i<count; i++) {
-                const r = 60 + Math.random()*250, theta = Math.random()*Math.PI*2, phi = Math.acos(2*Math.random()-1);
-                pos[i*3] = r*Math.sin(phi)*Math.cos(theta); pos[i*3+1] = r*Math.sin(phi)*Math.sin(theta); pos[i*3+2] = r*Math.cos(phi);
-                sizes[i] = Math.random()*2.0;
-                let c = Math.random(), finalC = c<0.6?c2:(c<0.9?c1:c3);
-                colors[i*3]=finalC.r; colors[i*3+1]=finalC.g; colors[i*3+2]=finalC.b;
+        function createEmberBackground() {
+            const geometry = new THREE.BufferGeometry();
+            const count = CONFIG.particles.bgCount;
+            const pos = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const c1 = new THREE.Color(0xff3b3b); // 朱砂红
+            const c2 = new THREE.Color(0xffd36a); // 金色点缀
+            const c3 = new THREE.Color(0xff9bd6); // 粉色高光
+
+            for (let i = 0; i < count; i++) {
+                const r = 50 + Math.random() * 180;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                pos[i * 3 + 2] = r * Math.cos(phi);
+                const c = Math.random();
+                const finalC = c < 0.6 ? c1 : (c < 0.85 ? c2 : c3);
+                colors[i * 3] = finalC.r; colors[i * 3 + 1] = finalC.g; colors[i * 3 + 2] = finalC.b;
             }
+
             geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            
-            galaxySystem = new THREE.Points(geometry, new THREE.PointsMaterial({ size: 1.0, transparent: true, opacity: 0.8, vertexColors: true, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-            bgGroup.add(galaxySystem);
+
+            const mat = matLib.emberFlake.clone();
+            mat.vertexColors = true;
+            mat.size = 1.35;
+            mat.opacity = 0.92;
+            emberSystem = new THREE.Points(geometry, mat);
+            bgGroup.add(emberSystem);
         }
 
-        function createHeartBackground() {
+        function createSparkBackground() {
             const geometry = new THREE.BufferGeometry();
-            const count = 1500;
+            const count = CONFIG.particles.bgCount;
+            const pos = new Float32Array(count * 3);
+            const velocities = new Float32Array(count);
+
+            for (let i = 0; i < count; i++) {
+                pos[i * 3] = (Math.random() - 0.5) * 100;
+                pos[i * 3 + 1] = (Math.random() - 0.5) * 100;
+                pos[i * 3 + 2] = (Math.random() - 0.5) * 60;
+                velocities[i] = 0.6 + Math.random() * 0.9;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 1));
+
+            const mat = matLib.sparkFlake.clone();
+            sparkSystem = new THREE.Points(geometry, mat);
+            sparkSystem.visible = false;
+            bgGroup.add(sparkSystem);
+        }
+
+        function createPetalBackground() {
+            const geometry = new THREE.BufferGeometry();
+            const count = Math.floor(CONFIG.particles.bgCount * 0.8);
             const pos = new Float32Array(count * 3);
             const velocities = new Float32Array(count);
             const colors = new Float32Array(count * 3);
-            const c1 = new THREE.Color(CONFIG.colors.pinkHot);
-            const c2 = new THREE.Color(CONFIG.colors.pinkSoft);
-            const c3 = new THREE.Color(0xffffff);
+            const c1 = new THREE.Color(THEMES[0].petal);
+            const c2 = new THREE.Color(THEMES[0].spark);
 
-            for(let i=0; i<count; i++) {
-                pos[i*3] = (Math.random() - 0.5) * 120; 
-                pos[i*3+1] = (Math.random() - 0.5) * 120; 
-                pos[i*3+2] = (Math.random() - 0.5) * 80; 
-                velocities[i] = 0.5 + Math.random() * 0.8; 
-                let c = Math.random();
-                let finalC = c < 0.4 ? c1 : (c < 0.7 ? c2 : c3);
-                colors[i*3] = finalC.r; colors[i*3+1] = finalC.g; colors[i*3+2] = finalC.b;
+            for (let i = 0; i < count; i++) {
+                pos[i * 3] = (Math.random() - 0.5) * 120;
+                pos[i * 3 + 1] = (Math.random() - 0.5) * 120;
+                pos[i * 3 + 2] = (Math.random() - 0.5) * 80;
+                velocities[i] = 0.4 + Math.random() * 0.8;
+                const finalC = Math.random() > 0.5 ? c1 : c2;
+                colors[i * 3] = finalC.r; colors[i * 3 + 1] = finalC.g; colors[i * 3 + 2] = finalC.b;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
             geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 1));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            const mat = matLib.heartFlake.clone();
+            const mat = matLib.petalFlake.clone();
             mat.vertexColors = true;
-            heartSystem = new THREE.Points(geometry, mat);
-            heartSystem.visible = false;
-            bgGroup.add(heartSystem);
+            petalSystem = new THREE.Points(geometry, mat);
+            petalSystem.visible = false;
+            bgGroup.add(petalSystem);
         }
 
         function createParticles() {
-            const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
-            const boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
+            const knotGeo = new THREE.TorusKnotGeometry(0.24, 0.08, 36, 6);
+            const firecrackerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.7, 12);
+            const coupletGeo = new THREE.BoxGeometry(0.25, 0.95, 0.08);
+            const coinGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.08, 16);
+            const beadGeo = new THREE.SphereGeometry(0.22, 12, 12);
             const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
 
             for (let i = 0; i < CONFIG.particles.count; i++) {
                 const rand = Math.random(); let mesh, type;
-                if (rand < 0.45) { mesh = new THREE.Mesh(sphereGeo, matLib.gold); type = 'GOLD'; } 
-                else if (rand < 0.8) { mesh = new THREE.Mesh(boxGeo, matLib.pinkMain); type = 'PINK'; } 
-                else { mesh = new THREE.Mesh(boxGeo, matLib.pinkSoft); type = 'PINK_SOFT'; }
-                const s = 0.4 + Math.random() * 0.4; mesh.scale.set(s,s,s);
-                mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+                if (rand < 0.25) { mesh = new THREE.Mesh(coupletGeo, matLib.couplet); type = 'COUPLET'; }
+                else if (rand < 0.5) { mesh = new THREE.Mesh(firecrackerGeo, matLib.firecracker); type = 'FIRECRACKER'; }
+                else if (rand < 0.72) { mesh = new THREE.Mesh(knotGeo, matLib.knot); type = 'KNOT'; }
+                else if (rand < 0.88) { mesh = new THREE.Mesh(coinGeo, matLib.coin); type = 'COIN'; }
+                else { mesh = new THREE.Mesh(beadGeo, matLib.bead); type = 'BEAD'; }
+                const s = 0.4 + Math.random() * 0.5; mesh.scale.set(s,s,s);
+                mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
                 mainGroup.add(mesh); particleSystem.push(new Particle(mesh, type, false));
             }
-            for(let i=0; i<CONFIG.particles.dustCount; i++) {
+            for (let i = 0; i < CONFIG.particles.dustCount; i++) {
                 const mesh = new THREE.Mesh(dustGeo, matLib.dust); mesh.scale.setScalar(0.5 + Math.random());
                 mainGroup.add(mesh); particleSystem.push(new Particle(mesh, 'DUST', true));
             }
-            createLanternTopper();
+
+            // Lantern contour glow orbs (irregular bright dots)
+            rebuildLanternOutlineOrbs();
         }
 
-        function createLanternTopper() {
-            const topper = new THREE.Group();
-            const capGeo = new THREE.CylinderGeometry(1.6, 1.2, 1.2, 24);
-            const cap = new THREE.Mesh(capGeo, matLib.gold);
-            cap.position.set(0, CONFIG.particles.lanternHeight / 2 + 1.1, 0);
-            topper.add(cap);
 
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.12, 12, 24), matLib.gold);
-            ring.position.set(0, CONFIG.particles.lanternHeight / 2 + 2.0, 0);
-            ring.rotation.x = Math.PI / 2;
-            topper.add(ring);
-
-            const bottomCap = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.1, 0.8, 24), matLib.gold);
-            bottomCap.position.set(0, -CONFIG.particles.lanternHeight / 2 - 1.0, 0);
-            topper.add(bottomCap);
-
-            const tasselGroup = new THREE.Group();
-            for (let i = 0; i < 5; i++) {
-                const bead = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), matLib.pinkMain);
-                bead.position.set(0, -CONFIG.particles.lanternHeight / 2 - 1.7 - i * 0.4, 0);
-                tasselGroup.add(bead);
+        function rebuildLanternOutlineOrbs() {
+            if (outlineOrbSystem) {
+                mainGroup.remove(outlineOrbSystem);
+                disposePoints(outlineOrbSystem);
+                outlineOrbSystem = null;
             }
-            topper.add(tasselGroup);
-
-            const halo = new THREE.Mesh(new THREE.PlaneGeometry(7, 7), new THREE.MeshBasicMaterial({ 
-                map: new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/glow.png'), 
-                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.4, color: 0xffcc77 
-            }));
-            halo.position.set(0, CONFIG.particles.lanternHeight / 2 + 1.1, 0);
-            topper.add(halo);
-
-            starGroup.add(topper);
-            STATE.starMesh = cap;
-            STATE.starHaloMesh = halo; 
+            createLanternOutlineOrbs();
         }
 
-        function switchTheme(themeIndex) {
-            STATE.currentThemeIndex = themeIndex;
+        function createLanternOutlineOrbs() {
+            if (!LANTERN_SAMPLERS) return;
+            const count = Math.max(0, Math.floor(CONFIG.particles.orbCount || 0));
+            if (!count) return;
+
+            // Base positions (lantern-space) and scatter targets (lantern-space)
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const basePositions = new Float32Array(count * 3);
+            const scatterPositions = new Float32Array(count * 3);
+
+            const tmp = new THREE.Vector3();
+            const dir = new THREE.Vector3();
+
+            // Interior sampling (approx lantern volume)
+            const halfH = (CONFIG.lantern && CONFIG.lantern.height) ? (CONFIG.lantern.height * 0.5) : 12;
+            const baseR = (CONFIG.lantern && CONFIG.lantern.radius) ? CONFIG.lantern.radius : 9.5;
+
+            function sampleInteriorPoint(out) {
+                // y in [-halfH, halfH], with denser fill around the mid-body
+                const y = (Math.random() * 2 - 1) * (halfH * 0.92);
+                const yn = y / (halfH * 0.92); // [-1,1]
+                // Profile: tighter at ends, fuller in the middle
+                const profile = 0.35 + 0.65 * (1.0 - yn * yn);
+                const rMax = baseR * 0.92 * profile;
+
+                const a = Math.random() * Math.PI * 2;
+                // Slight bias toward the shell (gives "lantern filled with light")
+                const rr = Math.pow(Math.random(), 0.55);
+                const r = rr * rMax;
+
+                out.set(r * Math.cos(a), y, r * Math.sin(a));
+                // Small jitter for irregularity
+                out.x += (Math.random() - 0.5) * 0.35;
+                out.y += (Math.random() - 0.5) * 0.35;
+                out.z += (Math.random() - 0.5) * 0.35;
+                return true;
+            }
+
+            for (let i = 0; i < count; i++) {
+                const rr = Math.random();
+
+                // Distribution:
+                // - Outline (RIB/HOOP): ~45%
+                // - Interior volume:     ~45%
+                // - Body surface:        ~10%
+                let tag;
+                if (rr < 0.45) tag = (Math.random() < 0.7) ? 'RIB' : 'HOOP';
+                else if (rr < 0.90) tag = 'INNER';
+                else tag = 'BODY';
+
+                if (tag === 'INNER') {
+                    sampleInteriorPoint(tmp);
+                } else {
+                    if (!sampleLanternPoint(tmp, tag)) {
+                        // Fallback: random point in a capsule-ish volume
+                        const y = (Math.random() * 2 - 1) * (halfH * 0.92);
+                        const a = Math.random() * Math.PI * 2;
+                        const r = Math.pow(Math.random(), 0.6) * (baseR * 0.85);
+                        tmp.set(r * Math.cos(a), y, r * Math.sin(a));
+                    }
+                }
+
+                // Make outline points slightly "outside" for a crisp silhouette,
+                // but keep interior points inside.
+                if (tag === 'RIB' || tag === 'HOOP') {
+                    const expand = 1.02 + Math.random() * 0.05;
+                    tmp.x *= expand; tmp.z *= expand;
+                    tmp.y += (Math.random() - 0.5) * 0.7;
+                } else if (tag === 'INNER') {
+                    tmp.y += (Math.random() - 0.5) * 0.5;
+                } else {
+                    tmp.x += (Math.random() - 0.5) * 0.6;
+                    tmp.z += (Math.random() - 0.5) * 0.6;
+                    tmp.y += (Math.random() - 0.5) * 0.6;
+                }
+
+                const idx = i * 3;
+                positions[idx] = tmp.x;
+                positions[idx + 1] = tmp.y;
+                positions[idx + 2] = tmp.z;
+
+                basePositions[idx] = tmp.x;
+                basePositions[idx + 1] = tmp.y;
+                basePositions[idx + 2] = tmp.z;
+
+                // Scatter target: outward along the base direction + jitter
+                dir.copy(tmp);
+                if (dir.lengthSq() < 1e-6) {
+                    const a = Math.random() * Math.PI * 2;
+                    dir.set(Math.cos(a), (Math.random() * 0.6 - 0.3), Math.sin(a));
+                }
+                dir.normalize();
+
+                const rScatter = 14 + Math.random() * 18;
+                dir.multiplyScalar(rScatter);
+                dir.x += (Math.random() - 0.5) * 4.0;
+                dir.y += (Math.random() - 0.5) * 4.0;
+                dir.z += (Math.random() - 0.5) * 4.0;
+
+                scatterPositions[idx] = dir.x;
+                scatterPositions[idx + 1] = dir.y;
+                scatterPositions[idx + 2] = dir.z;
+
+                // Vertex brightness (grayscale), theme hue comes from material color
+                let b = 0.55 + Math.random() * 0.45;
+                // Interior points slightly dimmer on average, outline slightly brighter
+                if (tag === 'INNER') b *= (0.85 + Math.random() * 0.18);
+                else if (tag === 'RIB' || tag === 'HOOP') b = Math.min(1.0, b * (1.05 + Math.random() * 0.12));
+
+                if (Math.random() < 0.08) b = Math.min(1.0, b * 1.35);
+                colors[idx] = b;
+                colors[idx + 1] = b;
+                colors[idx + 2] = b;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const size = 0.18 + (count / 2400) * 0.12;
+            const activeTheme = (THEMES && (THEMES[STATE.currentThemeIndex] || THEMES[0])) || { lanternGlow: 0xf3bc6c };
+            const mat = new THREE.PointsMaterial({
+                map: glowTexture,
+                transparent: true,
+                opacity: 0.92,
+                size,
+                sizeAttenuation: true,
+                depthWrite: false,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                color: new THREE.Color(activeTheme.lanternGlow)
+            });
+
+            outlineOrbSystem = new THREE.Points(geometry, mat);
+            outlineOrbSystem.renderOrder = 3;
+            outlineOrbSystem.frustumCulled = false;
+
+            // Persist base/scatter arrays for gesture-driven animation
+            outlineOrbSystem.userData.basePositions = basePositions;
+            outlineOrbSystem.userData.scatterPositions = scatterPositions;
+
+            mainGroup.add(outlineOrbSystem);
+        }
+
+
+        function switchTheme(themeIndex, { save = true } = {}) {
+            const index = Number.isFinite(themeIndex) ? themeIndex : 0;
+            const theme = THEMES[index] || THEMES[0];
+            STATE.currentThemeIndex = index;
 
             const titleEl = document.getElementById('main-title');
             if (titleEl) {
-                if (themeIndex === 0) { 
-                    titleEl.style.color = '#d4af37';
-                    titleEl.style.textShadow = '0 0 15px rgba(212, 175, 55, 0.4), 0 0 30px rgba(212, 175, 55, 0.2)';
-                } else if (themeIndex === 1) { 
-                    titleEl.style.color = '#ff69b4';
-                    titleEl.style.textShadow = '0 0 15px rgba(255, 22, 148, 0.6), 0 0 30px rgba(255, 183, 197, 0.4)';
-                }
+                titleEl.style.textShadow = `0 0 18px rgba(243, 188, 108, 0.35), 0 0 30px rgba(0, 0, 0, 0.2)`;
             }
-            
-            renderer.toneMappingExposure = (themeIndex === 1) ? 0.9 : 1.0;
-            
-            if (galaxySystem) galaxySystem.visible = (themeIndex === 0);
-            if (heartSystem) heartSystem.visible = (themeIndex === 1);
 
-            const fogColor = (themeIndex === 1) ? 0x1a0510 : CONFIG.colors.bg;
-            scene.fog.color.setHex(fogColor); 
-            scene.background.setHex(fogColor);
+            renderer.toneMappingExposure = 1.12;
 
-            particleSystem.forEach(p => {
-                if (p.isDust) {
-                    if (themeIndex === 1) p.mesh.material.color.setHex(CONFIG.colors.pinkSoft);
-                    else p.mesh.material.color.setHex(0xffffee);
-                    return;
-                }
-                
-                if (p.type === 'PHOTO') {
-                    const group = p.mesh;
-                    let frameMat;
-                    if(themeIndex === 0) frameMat = matLib.frameGold;
-                    else frameMat = matLib.framePink;
+            if (emberSystem) emberSystem.visible = (index === 0);
+            if (sparkSystem) sparkSystem.visible = (index === 1);
+            if (petalSystem) petalSystem.visible = (index === 2);
 
-                    if (group.children[0]) group.children[0].material = frameMat;
-                    if (group.children[2]) group.children[2].visible = (themeIndex !== 0); 
-                    return;
-                }
+            scene.fog.color.setHex(theme.fog);
+            scene.background.setHex(theme.bg);
 
-                let newMat;
-                if (themeIndex === 0) { 
-                    if(p.type === 'GOLD') newMat = matLib.gold;
-                    else if(p.type === 'PINK') newMat = matLib.pinkMain;
-                    else if(p.type === 'PINK_SOFT') newMat = matLib.pinkSoft;
-                } else if (themeIndex === 1) { 
-                    if(p.type === 'GOLD') newMat = matLib.pinkMain; 
-                    else if(p.type === 'PINK') newMat = matLib.pinkMain; 
-                    else if(p.type === 'PINK_SOFT') newMat = matLib.pinkSoft; 
-                }
-                
-                if (newMat) p.mesh.material = newMat;
-            });
+            matLib.lanternBody.color.setHex(theme.lantern);
+            matLib.lanternBody.emissive.setHex(theme.lanternGlow);
+            matLib.lanternGold.color.setHex(theme.accent);
+            matLib.lanternGold.emissive.setHex(theme.accentDeep);
+            matLib.knot.color.setHex(theme.knot);
+            matLib.firecracker.color.setHex(theme.firecracker);
+            matLib.couplet.color.setHex(theme.couplet);
+            matLib.coin.color.setHex(theme.coin);
+            matLib.bead.color.setHex(theme.bead);
+            matLib.dust.color.setHex(theme.dust);
+            matLib.photoFrame.color.setHex(theme.accent);
+            matLib.photoBorder.color.setHex(theme.dust);
 
-            if (STATE.starMesh && STATE.starHaloMesh) {
-                if(themeIndex === 0) {
-                    STATE.starMesh.material = matLib.starGold;
-                    STATE.starHaloMesh.material.color.setHex(0xffaa00);
-                } else {
-                    STATE.starMesh.material = matLib.pinkMain;
-                    STATE.starHaloMesh.material.color.setHex(CONFIG.colors.pinkHot);
-                }
+
+            if (outlineOrbSystem && outlineOrbSystem.material) {
+                outlineOrbSystem.material.color.setHex(theme.lanternGlow);
+                const preset = STATE.quality && STATE.quality.preset ? STATE.quality.preset : 'medium';
+                outlineOrbSystem.material.size = (preset === 'ultra') ? 0.65 : (preset === 'high') ? 0.58 : (preset === 'medium') ? 0.50 : 0.44;
+            }
+            if (emberSystem) emberSystem.material.color.setHex(theme.ember);
+            if (sparkSystem) sparkSystem.material.color.setHex(theme.spark);
+            if (petalSystem) petalSystem.material.color.setHex(theme.petal);
+
+            if (STATE.emblemHaloMesh) {
+                STATE.emblemHaloMesh.material.color.setHex(theme.ember);
+            }
+
+            updateThemeUI();
+            if (save) {
+                saveTheme(index);
             }
         }
 
@@ -554,44 +1610,42 @@
             
             const group = new THREE.Group();
             const frameGeo = new THREE.BoxGeometry(photoW + 0.15, photoH + 0.15, 0.1);
-            
-            let currentFrameMat;
-            if (STATE.currentThemeIndex === 0) currentFrameMat = matLib.frameGold;
-            else currentFrameMat = matLib.framePink;
 
-            const frame = new THREE.Mesh(frameGeo, currentFrameMat);
+            const frame = new THREE.Mesh(frameGeo, matLib.photoFrame);
             group.add(frame);
             
-            const photo = new THREE.Mesh(new THREE.PlaneGeometry(photoW, photoH), new THREE.MeshBasicMaterial({ map: texture }));
+            const photo = new THREE.Mesh(new THREE.PlaneGeometry(photoW, photoH), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
             photo.position.z = 0.06; group.add(photo);
 
             const borderGeo = new THREE.BoxGeometry(photoW + 0.25, photoH + 0.25, 0.08);
-            const border = new THREE.Mesh(borderGeo, matLib.snowBorder);
-            border.position.z = -0.02; border.visible = (STATE.currentThemeIndex !== 0);
+            const border = new THREE.Mesh(borderGeo, matLib.photoBorder);
+            border.position.z = -0.02;
             group.add(border);
 
+            let scale;
+            const rScale = Math.random();
+            if (rScale < 0.18) scale = 0.48 + Math.random() * 0.22;       // small
+            else if (rScale < 0.82) scale = 0.72 + Math.random() * 0.70;  // medium
+            else scale = 1.45 + Math.random() * 0.45;                      // large
+
+            group.scale.setScalar(scale);
+            group.userData.focusScale = 5.2;
+            group.userData.contentType = 'PHOTO';
+            group.userData.baseSize = { x: photoW + 0.25, y: photoH + 0.25 };
             photoMeshGroup.add(group); particleSystem.push(new Particle(group, 'PHOTO', false));
         }
 
-        function handleImageUpload(e) {
-            if(!e.target.files.length) return;
-            Array.from(e.target.files).forEach(f => {
-                const reader = new FileReader();
-                reader.onload = (ev) => new THREE.TextureLoader().load(ev.target.result, t => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); });
-                reader.readAsDataURL(f);
-            });
-        }
-
         function clearPhotos() {
+            const sharedMaterials = new Set(Object.values(matLib));
             const photosToRemove = particleSystem.filter(p => p.type === 'PHOTO');
             photosToRemove.forEach(p => {
                 photoMeshGroup.remove(p.mesh);
                 p.mesh.traverse(child => {
                     if (child.isMesh) {
+                        if (child.material && child.material.map) child.material.map.dispose();
                         if (child.geometry) child.geometry.dispose();
-                        if (child.material) {
-                           if(Array.isArray(child.material)) child.material.forEach(m=>m.dispose());
-                           else child.material.dispose();
+                        if (child.material && !Array.isArray(child.material) && !sharedMaterials.has(child.material)) {
+                            child.material.dispose();
                         }
                     }
                 });
@@ -599,174 +1653,832 @@
             particleSystem = particleSystem.filter(p => p.type !== 'PHOTO');
         }
 
-        function exportSceneData() {
-            const photos = particleSystem.filter(p => p.type === 'PHOTO').map(p => {
-                try {
-                    return p.mesh.children[1].material.map.image.src; 
-                } catch(e) { return null; }
-            }).filter(src => src !== null);
+        function addLetterToScene(text) {
+            if (!text) return;
+            const texture = createBannerTexture(text);
+            if (!texture.image) return;
+            const aspect = texture.image.width / texture.image.height;
+            const bannerW = 2.2;
+            const bannerH = bannerW / aspect;
+            const banner = new THREE.Mesh(
+                new THREE.PlaneGeometry(bannerW, bannerH),
+                new THREE.MeshBasicMaterial({ map: texture, transparent: true, toneMapped: false })
+            );
+            banner.position.z = 0.04;
 
-            const exportData = {
-                music: STATE.musicData, 
-                letter: STATE.letterContent,
-                photos: photos,
-                theme: STATE.currentThemeIndex,
-                title: document.getElementById('main-title').innerText, 
-                isGestureSwitchEnabled: STATE.isGestureSwitchEnabled 
-            };
+            const group = new THREE.Group();
+            group.add(banner);
 
-            const blob = new Blob([JSON.stringify(exportData)], {type: "application/json"});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "lantern.json";
-            a.click();
-            URL.revokeObjectURL(url);
+            let scale;
+            const rScale = Math.random();
+            if (rScale < 0.18) scale = 0.42 + Math.random() * 0.18;       // small
+            else if (rScale < 0.85) scale = 0.60 + Math.random() * 0.55;  // medium
+            else scale = 1.15 + Math.random() * 0.25;                      // large
+
+            group.scale.setScalar(scale);
+            group.userData.focusScale = 6.2;
+            group.userData.contentType = 'LETTER';
+            group.userData.baseSize = { x: bannerW, y: bannerH };
+            letterMeshGroup.add(group); particleSystem.push(new Particle(group, 'LETTER', false));
         }
 
-        function importSceneData(jsonData) {
-            try {
-                const data = JSON.parse(jsonData);
-                
-                if (data.title) {
-                    document.getElementById('main-title').innerText = data.title;
-                }
-                
-                if (data.isGestureSwitchEnabled !== undefined) {
-                    STATE.isGestureSwitchEnabled = data.isGestureSwitchEnabled;
-                    const btn = document.getElementById('btn-switch-theme');
-                    if (STATE.isGestureSwitchEnabled) btn.classList.remove('disabled');
-                    else btn.classList.add('disabled');
-                }
-
-                if (data.letter) STATE.letterContent = data.letter;
-
-                if (data.music) {
-                    STATE.musicData = data.music;
-                    const audioEl = document.getElementById('bg-music');
-                    audioEl.src = data.music;
-                    audioEl.currentTime = 0;
-                    audioEl.play().catch(console.warn);
-                }
-
-                clearPhotos();
-                if (data.photos && Array.isArray(data.photos)) {
-                    const loader = new THREE.TextureLoader();
-                    data.photos.forEach(src => {
-                        loader.load(src, t => { 
-                            t.colorSpace = THREE.SRGBColorSpace; 
-                            addPhotoToScene(t); 
-                        });
-                    });
-                }
-
-                if (data.theme !== undefined) {
-                    switchTheme(data.theme);
-                }
-                
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log("Auto fullscreen blocked by browser policy:", err);
+        function clearLetters() {
+            const sharedMaterials = new Set(Object.values(matLib));
+            const lettersToRemove = particleSystem.filter(p => p.type === 'LETTER');
+            lettersToRemove.forEach(p => {
+                letterMeshGroup.remove(p.mesh);
+                p.mesh.traverse(child => {
+                    if (child.isMesh) {
+                        if (child.material && child.material.map) child.material.map.dispose();
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material && !Array.isArray(child.material) && !sharedMaterials.has(child.material)) {
+                            child.material.dispose();
+                        }
+                    }
                 });
+            });
+            particleSystem = particleSystem.filter(p => p.type !== 'LETTER');
+        }
 
-            } catch (e) {
-                console.error("Import failed:", e);
-                alert("文件格式错误，无法导入");
+        function createLetterCards(letters) {
+            clearLetters();
+            const limited = letters.slice(0, CONFIG.letters.maxCount);
+            limited.forEach(text => addLetterToScene(text));
+        }
+
+        function createBannerTexture(text) {
+            const canvas = document.createElement('canvas');
+            const width = 1024;
+            const height = 420;
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return new THREE.Texture();
+
+            const bg = ctx.createLinearGradient(0, 0, width, 0);
+            bg.addColorStop(0, '#8f161c');
+            bg.addColorStop(0.5, '#c3131f');
+            bg.addColorStop(1, '#8f161c');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = '#f3bc6c';
+            ctx.lineWidth = 16;
+            ctx.strokeRect(18, 18, width - 36, height - 36);
+
+            ctx.fillStyle = 'rgba(243, 188, 108, 0.55)';
+            ctx.beginPath();
+            ctx.arc(64, height / 2, 26, 0, Math.PI * 2);
+            ctx.arc(width - 64, height / 2, 26, 0, Math.PI * 2);
+            ctx.fill();
+
+            let fontSize = 64;
+            let lines = [];
+            const maxWidth = width * 0.76;
+            while (fontSize >= 36) {
+                ctx.font = `600 ${fontSize}px "Noto Serif SC", serif`;
+                lines = wrapTextLines(ctx, text, maxWidth);
+                if (lines.length <= 3) break;
+                fontSize -= 6;
+            }
+            if (lines.length > 3) {
+                lines = lines.slice(0, 3);
+                lines[2] = lines[2].replace(/\s+$/g, '');
+                lines[2] = `${lines[2].slice(0, Math.max(1, lines[2].length - 1))}...`;
+            }
+
+            ctx.fillStyle = '#fff3d8';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0,0,0,0.35)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetY = 3;
+
+            const lineHeight = fontSize * 1.25;
+            const totalHeight = lines.length * lineHeight;
+            let y = height / 2 - totalHeight / 2 + lineHeight / 2;
+            lines.forEach(line => {
+                ctx.fillText(line, width / 2, y);
+                y += lineHeight;
+            });
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.colorSpace = THREE.SRGBColorSpace;
+            return texture;
+        }
+
+        function wrapTextLines(ctx, text, maxWidth) {
+            const cleaned = String(text || '').trim();
+            if (!cleaned) return [''];
+            const parts = cleaned.split(/\n+/);
+            const lines = [];
+            parts.forEach(part => {
+                let line = '';
+                for (const char of Array.from(part)) {
+                    const testLine = line + char;
+                    if (line && ctx.measureText(testLine).width > maxWidth) {
+                        lines.push(line);
+                        line = char;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                if (line) lines.push(line);
+            });
+            return lines;
+        }
+
+        function clearOrnaments() {
+            const toRemove = particleSystem.filter(p => p.type !== 'PHOTO' && p.type !== 'LETTER');
+            toRemove.forEach(p => {
+                mainGroup.remove(p.mesh);
+            });
+            particleSystem = particleSystem.filter(p => p.type === 'PHOTO' || p.type === 'LETTER');
+        }
+
+        function disposePoints(system) {
+            if (!system) return;
+            if (system.geometry) system.geometry.dispose();
+            if (system.material) system.material.dispose();
+        }
+
+        function rebuildParticles() {
+            // ensure lantern mesh exists for sampling, then rebuild samplers
+            if (!lanternGroup) createLanternBody();
+            rebuildLanternSamplers();
+            clearOrnaments();
+            createParticles();
+        }
+
+        function rebuildBackgrounds() {
+            if (emberSystem) { bgGroup.remove(emberSystem); disposePoints(emberSystem); emberSystem = null; }
+            if (sparkSystem) { bgGroup.remove(sparkSystem); disposePoints(sparkSystem); sparkSystem = null; }
+            if (petalSystem) { bgGroup.remove(petalSystem); disposePoints(petalSystem); petalSystem = null; }
+            createEmberBackground();
+            createSparkBackground();
+            createPetalBackground();
+            switchTheme(STATE.currentThemeIndex, { save: false });
+        }
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function normalizeQualitySettings(settings = {}) {
+            return {
+                particleCount: clamp(Number(settings.particleCount ?? QUALITY_PRESETS.medium.particleCount), ...QUALITY_LIMITS.particleCount),
+                dustCount: clamp(Number(settings.dustCount ?? QUALITY_PRESETS.medium.dustCount), ...QUALITY_LIMITS.dustCount),
+                bgCount: clamp(Number(settings.bgCount ?? QUALITY_PRESETS.medium.bgCount), ...QUALITY_LIMITS.bgCount),
+                orbCount: clamp(Number(settings.orbCount ?? QUALITY_PRESETS.medium.orbCount), ...QUALITY_LIMITS.orbCount),
+                renderScale: clamp(Number(settings.renderScale ?? QUALITY_PRESETS.medium.renderScale), ...QUALITY_LIMITS.renderScale),
+                bloomStrength: clamp(Number(settings.bloomStrength ?? QUALITY_PRESETS.medium.bloomStrength), ...QUALITY_LIMITS.bloomStrength)
+            };
+        }
+
+        function getPixelRatio(scale) {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            return Math.min(dpr * scale, 2.5);
+        }
+
+        function applyQualitySettings(settings, { save = true, rebuild = true, updateUI = false } = {}) {
+            const normalized = normalizeQualitySettings(settings);
+            const prev = STATE.quality.settings || {};
+            STATE.quality.settings = normalized;
+
+            CONFIG.particles.count = normalized.particleCount;
+            CONFIG.particles.dustCount = normalized.dustCount;
+            CONFIG.particles.bgCount = normalized.bgCount;
+
+            CONFIG.particles.orbCount = normalized.orbCount;
+            if (renderer) {
+                renderer.setPixelRatio(getPixelRatio(normalized.renderScale));
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+            if (bloomPass) {
+                bloomPass.strength = normalized.bloomStrength;
+                bloomPass.enabled = normalized.bloomStrength > 0.01;
+            }
+
+            if (rebuild && (prev.particleCount !== normalized.particleCount || prev.dustCount !== normalized.dustCount || prev.orbCount !== normalized.orbCount)) {
+                rebuildParticles();
+            }
+            if (rebuild && prev.bgCount !== normalized.bgCount) {
+                rebuildBackgrounds();
+            }
+            if (updateUI) updateQualityUI();
+            if (save) saveQuality();
+        }
+
+        function applyQualityPreset(presetKey, { save = true, rebuild = true } = {}) {
+            const preset = QUALITY_PRESETS[presetKey];
+            const resolvedKey = preset ? presetKey : 'ultra';
+            STATE.quality.preset = resolvedKey;
+            applyQualitySettings({ ...QUALITY_PRESETS[resolvedKey] }, { save, rebuild, updateUI: true });
+        }
+
+        function applyQualityFromSliders() {
+            const particlesInput = document.getElementById('quality-particles');
+            const dustInput = document.getElementById('quality-dust');
+            const embersInput = document.getElementById('quality-embers');
+            const renderInput = document.getElementById('quality-render');
+            const bloomInput = document.getElementById('quality-bloom');
+            if (!particlesInput || !dustInput || !embersInput || !renderInput || !bloomInput) return;
+
+            STATE.quality.preset = 'ultra';
+            applyQualitySettings({
+                particleCount: Number(particlesInput.value),
+                dustCount: Number(dustInput.value),
+                bgCount: Number(embersInput.value),
+                renderScale: Number(renderInput.value),
+                bloomStrength: Number(bloomInput.value),
+                orbCount: (STATE.quality && STATE.quality.settings && Number.isFinite(STATE.quality.settings.orbCount)) ? STATE.quality.settings.orbCount : QUALITY_PRESETS.ultra.orbCount,
+            }, { save: true, rebuild: true, updateUI: true });
+        }
+
+        function scheduleQualityApply() {
+            if (qualityApplyTimer) clearTimeout(qualityApplyTimer);
+            qualityApplyTimer = setTimeout(() => {
+                applyQualityFromSliders();
+            }, 200);
+        }
+
+        function setQualityCustomVisible(visible) {
+            const custom = document.getElementById('quality-custom');
+            if (custom) custom.classList.toggle('active', visible);
+        }
+
+        function setSliderValue(inputId, outputId, value, formatter) {
+            const input = document.getElementById(inputId);
+            const output = document.getElementById(outputId);
+            if (!input || !output) return;
+            input.value = value;
+            output.textContent = formatter(value);
+        }
+
+        function updateThemeUI() {
+            document.querySelectorAll('#theme-options .chip').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.theme) === STATE.currentThemeIndex);
+            });
+        }
+
+        function setQualityPresetUI(preset) {
+            document.querySelectorAll('#quality-options .chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.quality === preset);
+            });
+            setQualityCustomVisible(preset === 'custom');
+        }
+
+        function updateQualityUI() {
+            setQualityPresetUI(STATE.quality.preset);
+            const settings = STATE.quality.settings;
+            setSliderValue('quality-particles', 'quality-particles-value', settings.particleCount, v => Math.round(v));
+            setSliderValue('quality-dust', 'quality-dust-value', settings.dustCount, v => Math.round(v));
+            setSliderValue('quality-embers', 'quality-embers-value', settings.bgCount, v => Math.round(v));
+            setSliderValue('quality-render', 'quality-render-value', settings.renderScale, v => `${Number(v).toFixed(2)}x`);
+            setSliderValue('quality-bloom', 'quality-bloom-value', settings.bloomStrength, v => Number(v).toFixed(2));
+        }
+
+        function saveTheme(index) {
+            try {
+                localStorage.setItem(STORAGE_KEYS.theme, String(index));
+            } catch (err) {
+                console.warn('theme save failed', err);
             }
         }
 
-        function setupLetterSystem() {
-            const modal = document.getElementById('letter-editor-modal'), txt = document.getElementById('letter-text-input');
-            document.getElementById('btn-write-letter').onclick = (e) => { e.stopPropagation(); modal.style.display = 'flex'; txt.value = STATE.letterContent; };
-            document.getElementById('btn-cancel-letter').onclick = (e) => { e.stopPropagation(); modal.style.display = 'none'; };
-            // 修改2：保存书信逻辑，允许用户清空内容，并保存为空字符串
-            document.getElementById('btn-save-letter').onclick = (e) => { 
-                e.stopPropagation(); 
-                STATE.letterContent = txt.value.trim(); 
-                modal.style.display = 'none'; 
-            };
-            document.getElementById('btn-close-letter-mode').onclick = (e) => { e.stopPropagation(); exitLetterMode(); };
+        function saveQuality() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.quality, JSON.stringify({
+                    preset: STATE.quality.preset,
+                    settings: STATE.quality.settings
+                }));
+            } catch (err) {
+                console.warn('quality save failed', err);
+            }
         }
 
-        function enterLetterMode() {
-            if (STATE.mode === 'LETTER') return;
-            STATE.mode = 'LETTER';
-            const overlay = document.getElementById('letter-overlay'), paper = document.querySelector('.letter-paper'), display = document.getElementById('letter-content-display');
-            overlay.style.display = 'flex'; requestAnimationFrame(() => { overlay.style.opacity = 1; paper.style.transform = 'translateY(0)'; });
-            display.textContent = ''; display.classList.remove('cursor');
-            
-            let i = 0;
-            const typeWriter = () => {
-                if (STATE.mode !== 'LETTER') return;
-                if (i < STATE.letterContent.length) { display.textContent += STATE.letterContent.charAt(i++); display.scrollTop = display.scrollHeight; STATE.letterTyper = setTimeout(typeWriter, 100); }
-                else display.classList.remove('cursor');
-            };
-            STATE.letterStartTimer = setTimeout(() => { if(STATE.mode==='LETTER') { display.classList.add('cursor'); typeWriter(); } }, 2000);
+        function loadStoredSettings() {
+            try {
+                const themeValue = localStorage.getItem(STORAGE_KEYS.theme);
+                if (themeValue !== null) {
+                    const themeIndex = Number(themeValue);
+                    if (!Number.isNaN(themeIndex)) {
+                        STATE.currentThemeIndex = clamp(themeIndex, 0, THEMES.length - 1);
+                    }
+                }
+            } catch (err) {
+                console.warn('theme load failed', err);
+            }
+
+            try {
+                const qualityValue = localStorage.getItem(STORAGE_KEYS.quality);
+                if (qualityValue) {
+                    const data = JSON.parse(qualityValue);
+                    if (data && typeof data === 'object') {
+                        if (data.preset && QUALITY_PRESETS[data.preset]) {
+                            STATE.quality.preset = data.preset;
+                        }
+                        if (data.settings && typeof data.settings === 'object') {
+                            const basePreset = QUALITY_PRESETS[STATE.quality.preset] || QUALITY_PRESETS.ultra;
+                            STATE.quality.settings = normalizeQualitySettings({
+                                ...basePreset,
+                                ...data.settings
+                            });
+                            return;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('quality load failed', err);
+            }
+
+            STATE.quality.settings = normalizeQualitySettings(QUALITY_PRESETS[STATE.quality.preset] || QUALITY_PRESETS.ultra);
         }
 
-        function exitLetterMode() {
-            STATE.mode = 'TREE'; clearTimeout(STATE.letterTyper); clearTimeout(STATE.letterStartTimer);
-            const overlay = document.getElementById('letter-overlay'), paper = document.querySelector('.letter-paper');
-            overlay.style.opacity = 0; paper.style.transform = 'translateY(20px)';
-            setTimeout(() => { overlay.style.display = 'none'; }, 500);
-            STATE.spinVel.set(0,0);
+        function setSettingsOpen(open) {
+            const panel = document.getElementById('settings-panel');
+            const backdrop = document.getElementById('settings-backdrop');
+            if (!panel || !backdrop) return;
+            panel.classList.toggle('active', open);
+            backdrop.classList.toggle('active', open);
+            panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+        }
+
+        function setHelpOpen(open) {
+            const panel = document.getElementById('help-panel');
+            const backdrop = document.getElementById('help-backdrop');
+            if (!panel || !backdrop) return;
+            panel.classList.toggle('active', open);
+            backdrop.classList.toggle('active', open);
+            panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+        }
+
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+            updateView();
+        }
+
+        function updateView() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const isPortrait = aspect < 0.9;
+            camera.position.z = CONFIG.camera.z + (isPortrait ? 8 : 0);
+            mainGroup.scale.setScalar(isPortrait ? 0.86 : 1);
+        }
+        async function loadLocalContent() {
+            try {
+                const res = await fetch(withBust(CONTENT_URL), { cache: 'no-store' });
+                if (!res.ok) throw new Error(`content ${res.status}`);
+                const data = await res.json();
+
+                // Photos: only load from ./img/ (do not read URLs from lantern-content.json)
+                const photoUrls = await loadLocalFolderImages();
+
+                // Letters: keep reading from lantern-content.json
+                const letters = normalizeLetters(data && data.letters);
+
+                await preloadPhotos(photoUrls);
+                STATE.letters = letters;
+                createLetterCards(letters);
+
+                if (!photoUrls.length) {
+                    console.warn('No local photos found in', LOCAL_IMG_DIR, '— please provide img/index.json or enable directory listing.');
+                }
+            } catch (err) {
+                console.warn('load content failed', err);
+            }
+        }
+
+        async function loadLocalFolderImages() {
+            const urls = new Set();
+            const indexData = await fetchJsonSafe(LOCAL_IMG_INDEX);
+            if (indexData) {
+                normalizePhotoUrls(indexData.photos ?? indexData).forEach((item) => {
+                    const resolved = resolveLocalUrl(item);
+                    if (resolved) urls.add(resolved);
+                });
+            }
+
+            if (ENABLE_AUTO_INDEX && urls.size === 0) {
+                // Fallback only: try directory listing if index.json missing/empty
+                const listing = await fetchTextSafe(LOCAL_IMG_DIR);
+                const autoUrls = parseAutoIndexImages(listing);
+                autoUrls.forEach((item) => urls.add(item));
+            }
+
+            return Array.from(urls);
+        }
+
+        const FETCH_BUST = window.LANTERN_FETCH_BUST !== false;
+        function withBust(url) {
+            if (!FETCH_BUST) return url;
+            try {
+                const u = new URL(url, window.location.href);
+                if (!u.pathname.toLowerCase().endsWith('.json')) return url;
+                u.searchParams.set('_v', String(Date.now()));
+                return u.toString();
+            } catch (e) {
+                if (!/\.json(\?|$)/i.test(String(url))) return url;
+                const s = String(url);
+                return s + (s.includes('?') ? '&' : '?') + '_v=' + Date.now();
+            }
+        }
+
+        async function fetchJsonSafe(url) {
+            try {
+                const res = await fetch(withBust(url), { cache: 'no-store' });
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function fetchTextSafe(url) {
+            try {
+                const res = await fetch(withBust(url), { cache: 'no-store' });
+                if (!res.ok) return '';
+                return await res.text();
+            } catch (err) {
+                return '';
+            }
+        }
+
+        function resolveLocalUrl(item) {
+            if (!item) return '';
+            const url = String(item).trim();
+            if (!url) return '';
+            if (/^https?:\/\//i.test(url)) return url;
+            if (url.startsWith('img/')) return url;
+            if (url.startsWith(LOCAL_IMG_DIR) || url.startsWith('/')) return url;
+            return `${LOCAL_IMG_DIR}${url}`;
+        }
+
+        function parseAutoIndexImages(html) {
+            if (!html) return [];
+            const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.avif'];
+            const baseUrl = new URL(LOCAL_IMG_DIR, window.location.href);
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const links = Array.from(doc.querySelectorAll('a[href]'));
+            return links.map((link) => link.getAttribute('href'))
+                .filter(Boolean)
+                .map((href) => href.trim())
+                .filter((href) => href && !href.startsWith('?') && !href.startsWith('../'))
+                .filter((href) => {
+                    const lower = href.toLowerCase();
+                    return imageExts.some(ext => lower.endsWith(ext));
+                })
+                .map((href) => new URL(href, baseUrl).toString());
+        }
+
+        function dedupeUrls(list) {
+            const seen = new Set();
+            return list.filter((item) => {
+                const key = String(item);
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        function normalizePhotoUrls(raw) {
+            if (!Array.isArray(raw)) return [];
+            return raw.map(item => {
+                if (typeof item === 'string') return item.trim();
+                if (item && typeof item.url === 'string') return item.url.trim();
+                return '';
+            }).filter(Boolean);
+        }
+
+        function normalizeLetters(raw) {
+            if (!Array.isArray(raw)) return [];
+            return raw.map(item => {
+                if (typeof item === 'string') return item.trim();
+                if (item && typeof item.text === 'string') return item.text.trim();
+                return '';
+            }).filter(Boolean);
+        }
+
+        async function preloadPhotos(urls) {
+            const limited = urls.slice(0, CONFIG.photos.maxCount);
+            clearPhotos();
+            if (!limited.length) return;
+            const loader = new THREE.TextureLoader();
+            loader.setCrossOrigin('anonymous');
+            const textures = await Promise.all(limited.map((src) => new Promise((resolve) => {
+                const tryLoad = (url, retried) => {
+                    loader.load(url, t => {
+                        t.colorSpace = THREE.SRGBColorSpace;
+                        resolve(t);
+                    }, undefined, err => {
+                        if (!retried) {
+                            const busted = url + (url.includes('?') ? '&' : '?') + '_imgv=' + Date.now();
+                            tryLoad(busted, true);
+                            return;
+                        }
+                        console.warn('photo load failed', src, err);
+                        resolve(null);
+                    });
+                };
+                tryLoad(src, false);
+            })));
+            textures.filter(Boolean).forEach(addPhotoToScene);
+        }
+
+        function pickFrontContentTarget(type) {
+            const want = (type === 'PHOTO' || type === 'LETTER') ? type : null;
+            const candidates = particleSystem.filter(p => want ? (p.type === want) : (p.type === 'PHOTO' || p.type === 'LETTER'));
+            if (!candidates.length) return null;
+            camera.updateMatrixWorld();
+            let best = null;
+            let bestScore = Infinity;
+            candidates.forEach(p => {
+                p.mesh.getWorldPosition(_focusVec);
+                _focusNdc.copy(_focusVec).project(camera);
+                if (_focusNdc.z < -1 || _focusNdc.z > 1) return;
+                const dist = Math.hypot(_focusNdc.x, _focusNdc.y);
+                if (dist > 0.75) return;
+                const score = dist + (_focusNdc.z + 1) * 0.2;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = p;
+                }
+            });
+            return best;
+        }
+
+        function updateWebcamPreview() {
+            if (!video) return;
+            const wrapper = document.getElementById('webcam-wrapper');
+            const preview = document.getElementById('webcam-preview');
+            if (!wrapper || !preview) return;
+            const aspect = video.videoWidth / video.videoHeight;
+            if (!Number.isFinite(aspect) || aspect <= 0) return;
+            wrapper.style.opacity = 1;
+            wrapper.style.height = `${120 / aspect}px`;
+            preview.width = video.videoWidth;
+            preview.height = video.videoHeight;
+        }
+
+        function stopCamera() {
+    // Stop prediction loop first (prevents rAF from spinning forever after camera is stopped)
+    try { isPredicting = false; } catch (e) {}
+
+    if (cameraStream) {
+        try { cameraStream.getTracks().forEach(track => track.stop()); } catch (e) {}
+        cameraStream = null;
+    }
+    if (video) {
+        try { video.pause?.(); } catch (e) {}
+        try { video.srcObject = null; } catch (e) {}
+    }
+    const wrapper = document.getElementById('webcam-wrapper');
+    if (wrapper) wrapper.style.opacity = 0;
+}
+
+function ensureWebcamDom() {
+    if (!video) video = document.getElementById('webcam');
+    const previewCanvas = document.getElementById('webcam-preview');
+    if (!canvasCtx && previewCanvas) canvasCtx = previewCanvas.getContext('2d');
+}
+
+
+
+function isStreamLive(stream) {
+    if (!stream) return false;
+    try {
+        const tracks = stream.getVideoTracks ? stream.getVideoTracks() : [];
+        return tracks.some(t => t && t.readyState === 'live');
+    } catch (e) {
+        return false;
+    }
+}
+
+// If the OS/browser kills the camera track (backgrounding, permission toggle, etc.),
+// we must clear state so "startCamera" will truly restart instead of reusing a dead stream.
+function attachCameraGuards(stream) {
+    if (!stream) return;
+    const onStop = () => {
+        // Avoid leaving stale stream pointers around
+        stopCamera();
+        ensureCameraPromptUI('摄像头已停止（可能是切到后台/系统回收/权限变化）。点击“启用摄像头”重新启动。');
+    };
+
+    try {
+        // Some browsers expose oninactive
+        stream.oninactive = onStop;
+    } catch (e) {}
+
+    try {
+        stream.getTracks().forEach(track => {
+            // 'ended' is the key signal that the track is no longer usable.
+            try { track.addEventListener('ended', onStop, { once: true }); } catch (e) {}
+        });
+    } catch (e) {}
+}
+let cameraPromptEl = null;
+function ensureCameraPromptUI(message) {
+    // Camera prompt UI removed per requirement.
+    return;
+}
+
+async function requestCameraFromUserGesture(opts = {}) {
+    ensureWebcamDom();
+    if (!video || !canvasCtx) {
+        ensureCameraPromptUI('页面摄像头组件未就绪，请刷新页面后重试。');
+        throw new Error('Webcam DOM not ready');
+    }
+    try {
+        await startCamera({ forceRestart: !!opts.forceRestart });
+        hideCameraPromptUI();
+} catch (err) {
+        const name = err?.name || '';
+        const msg = (name === 'NotAllowedError' || name === 'SecurityError')
+            ? '浏览器已阻止摄像头。请在浏览器地址栏/站点设置中允许摄像头后重试。'
+            : '摄像头启动失败，请重试或更换浏览器打开（不要用内置浏览器）。';
+        ensureCameraPromptUI(msg);
+        throw err;
+    }
+
+    // Start mediapipe if not ready yet
+    if (GESTURE_ENABLED && !handLandmarker && !mediaPipeIniting) {
+        mediaPipeIniting = true;
+        initMediaPipe().catch((e) => {
+            console.warn('init mediapipe failed', e);
+            ensureCameraPromptUI('手势模块加载失败，请稍后重试或刷新页面。');
+        }).finally(() => { mediaPipeIniting = false; });
+    }
+}
+
+
+
+function hideCameraPromptUI() {
+    // Camera prompt UI removed per requirement.
+    return;
+}
+
+function bindFirstGestureToCamera() {
+    const handler = () => { requestCameraFromUserGesture().catch(() => {}); };
+    window.addEventListener('pointerdown', handler, { once: true, passive: true });
+    window.addEventListener('touchstart', handler, { once: true, passive: true });
+    window.addEventListener('keydown', handler, { once: true });
+}
+
+async function startCamera(opts = {}) {
+    ensureWebcamDom();
+    if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('getUserMedia is not available in this browser');
+    }
+    if (!video || !canvasCtx) {
+        throw new Error('Webcam DOM not ready');
+    }
+    if (cameraStarting) return cameraStarting;
+
+    // Reuse existing LIVE stream to avoid repeated permission prompts / restarts
+    const canReuse = isStreamLive(cameraStream) && video.srcObject === cameraStream && !opts.forceRestart;
+    if (canReuse) {
+        try { video.muted = true; await video.play(); } catch (e) {}
+        updateWebcamPreview();
+        hideCameraPromptUI();
+        startPredicting();
+        return;
+    }
+
+    stopCamera();
+    lastVideoTime = -1;
+    lastCameraError = null;
+
+    cameraStarting = navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
+    }).then((stream) => {
+        cameraStream = stream;
+        attachCameraGuards(stream);
+
+        video.srcObject = stream;
+        video.muted = true;
+        video.setAttribute('playsinline', '');
+
+        return new Promise((resolve) => {
+            const onReady = () => {
+                    updateWebcamPreview();
+                    hideCameraPromptUI();
+                    video.play().catch(() => {});
+                    startPredicting();
+                    resolve();
+                };
+            if (video.readyState >= 2) onReady();
+            else video.addEventListener('loadeddata', onReady, { once: true });
+        });
+    }).catch((err) => {
+        lastCameraError = err;
+        console.warn('camera start failed', err);
+        throw err;
+    }).finally(() => {
+        cameraStarting = null;
+    });
+    return cameraStarting;
+}
+
+function startPredicting() {
+            if (isPredicting) return;
+            isPredicting = true;
+            predictWebcam();
         }
 
         async function initMediaPipe() {
-            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-            handLandmarker = await HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" }, runningMode: "VIDEO", numHands: 1 });
-            video = document.getElementById('webcam'); canvasCtx = document.getElementById('webcam-preview').getContext('2d'); drawingUtils = new DrawingUtils(canvasCtx);
-            
-            if (navigator.mediaDevices?.getUserMedia) {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: {ideal: 640}, height: {ideal: 480} } });
-                video.srcObject = stream;
-                video.addEventListener("loadeddata", () => { 
-                    video.play(); 
-                    document.getElementById('webcam-wrapper').style.opacity = 1;
-                    const aspect = video.videoWidth / video.videoHeight;
-                    document.getElementById('webcam-wrapper').style.height = (120/aspect) + 'px';
-                    document.getElementById('webcam-preview').width = video.videoWidth;
-                    document.getElementById('webcam-preview').height = video.videoHeight;
-                    predictWebcam(); 
+            const { FilesetResolver, HandLandmarker, DrawingUtils } = await import('@mediapipe/tasks-vision');
+            const vision = await FilesetResolver.forVisionTasks(GESTURE_WASM_BASE);
+            // Prefer GPU, but fall back to CPU for devices/browsers where GPU delegate is unstable.
+            const preferredDelegate = (window.LANTERN_GESTURE_DELEGATE || 'GPU').toUpperCase();
+            try {
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: { modelAssetPath: GESTURE_MODEL_URL, delegate: preferredDelegate },
+                    runningMode: "VIDEO",
+                    numHands: 1
                 });
+            } catch (e) {
+                if (preferredDelegate === 'GPU') {
+                    console.warn('GPU delegate init failed, fallback to CPU', e);
+                    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                        baseOptions: { modelAssetPath: GESTURE_MODEL_URL, delegate: "CPU" },
+                        runningMode: "VIDEO",
+                        numHands: 1
+                    });
+                } else {
+                    throw e;
+                }
+            }
+            handConnections = HandLandmarker.HAND_CONNECTIONS;
+            ensureWebcamDom();
+            if (canvasCtx) drawingUtils = new DrawingUtils(canvasCtx);
+            lastVideoTime = -1;
+
+            try {
+                await startCamera();
+            } catch (e) {
+                // Likely blocked until a user gesture on mobile browsers
+                ensureCameraPromptUI('点击“启用摄像头”以开始手势交互（手机上通常需要先点击一次）。');
+                throw e;
+            }
+
+            if (!cameraListenersReady) {
+                window.addEventListener('pagehide', stopCamera);
+                window.addEventListener('pageshow', (e) => { if (e.persisted) startCamera().catch(() => ensureCameraPromptUI('点击“启用摄像头”以重新开始手势交互。')); });
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) stopCamera();
+                    else startCamera().catch(() => ensureCameraPromptUI('点击“启用摄像头”以重新开始手势交互。'));
+                });
+                cameraListenersReady = true;
             }
         }
 
         let lastVideoTime = -1;
         async function predictWebcam() {
-            if (lastVideoTime !== video.currentTime && handLandmarker) {
+            if (!isPredicting) return;
+if (!video || !canvasCtx || !handLandmarker) {
+                requestAnimationFrame(predictWebcam);
+                return;
+            }
+            if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+                requestAnimationFrame(predictWebcam);
+                return;
+            }
+            if (lastVideoTime !== video.currentTime) {
                 lastVideoTime = video.currentTime;
                 const result = handLandmarker.detectForVideo(video, performance.now());
                 canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
                 canvasCtx.drawImage(video, 0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
                 if (result.landmarks?.[0]) {
-                    drawingUtils.drawConnectors(result.landmarks[0], HandLandmarker.HAND_CONNECTIONS, { color: "#d4af37", lineWidth: 3 });
+                    if (handConnections) {
+                        drawingUtils.drawConnectors(result.landmarks[0], handConnections, { color: "#d4af37", lineWidth: 3 });
+                    }
                     drawingUtils.drawLandmarks(result.landmarks[0], { color: "#ffffff", lineWidth: 1, radius: 3 });
                     processGestures(result.landmarks[0]);
-                } else STATE.hand.detected = false;
+                } else {
+                    STATE.hand.detected = false;
+                    if (STATE.mode === 'FOCUS') {
+                        STATE.mode = 'TREE';
+                        STATE.focusTarget = null;
+                        STATE.focusTargetType = null;
+                    }
+                    STATE.wasOkGesture = false;
+                    STATE.wasThumbsUpGesture = false;
+                }
             }
             requestAnimationFrame(predictWebcam);
         }
 
         function processGestures(lm) {
             STATE.hand.detected = true;
-            if (STATE.mode === 'LETTER') return;
 
             const dist = (i, j) => Math.hypot(lm[i].x - lm[j].x, lm[i].y - lm[j].y);
             const dIndex = dist(8,0), dMiddle = dist(12,0), dRing = dist(16,0), dPinky = dist(20,0);
             const palmSize = dist(0, 9); 
 
-            // 修改3：OK手势触发书信逻辑
-            // 判断是否是 OK 手势 (拇指捏合食指，且中指伸直)
-            if (dist(4,8) < 0.05 && dMiddle > 0.15 && dMiddle > dIndex * 1.2) {
-                // 新增判断：只有当 letterContent 不为空时才触发
-                if (STATE.letterContent && STATE.letterContent.trim() !== "") {
-                    if (Date.now() - STATE.letterLastTriggerTime > 1000) { 
-                        STATE.letterLastTriggerTime = Date.now(); 
-                        enterLetterMode(); 
-                    }
-                }
-                return;
-            }
+            const isOkGesture = dist(4,8) < 0.05 && dMiddle > 0.15 && dMiddle > dIndex * 1.2;
 
             const areFourFingersOpen = (dIndex > palmSize * 1.3) && 
                                      (dMiddle > palmSize * 1.3) && 
@@ -776,46 +2488,84 @@
             const isOldSwitchGesture = areFourFingersOpen && isThumbTucked;
 
             const isThumbExtended = dist(4, 9) > palmSize * 0.85; 
-            const isIndexCurled = dist(8, 9) < palmSize * 0.65;  
-            const isMiddleCurled = dist(12, 9) < palmSize * 0.65; 
-            const isRingCurled = dist(16, 9) < palmSize * 0.65;  
-            const isPinkyCurled = dist(20, 9) < palmSize * 0.65; 
+            const curledTh = palmSize * 0.78; // 更宽松：提升竖向“点赞”识别稳定性（电脑端尤其明显）
+const isIndexCurled = dist(8, 9) < curledTh; 
+const isMiddleCurled = dist(12, 9) < curledTh; 
+const isRingCurled = dist(16, 9) < curledTh;  
+const isPinkyCurled = dist(20, 9) < curledTh; 
 
-            const isThumbsUpGesture = isThumbExtended && isIndexCurled && isMiddleCurled && isRingCurled && isPinkyCurled;
+const curledCount = (isIndexCurled?1:0) + (isMiddleCurled?1:0) + (isRingCurled?1:0) + (isPinkyCurled?1:0);
 
-            if (isOldSwitchGesture || isThumbsUpGesture) {
+// 点赞：拇指伸展 + 其余手指大多收拢；同时排除 OK（拇指与食指捏合）
+const isThumbsUpGesture = isThumbExtended && (curledCount >= 3) && dist(4,8) > 0.08;
+
+            if (isOldSwitchGesture) {
                 if (STATE.isGestureSwitchEnabled) {
                     if (Date.now() - STATE.gestureDebounceTimer > 2000) { 
-                        switchTheme((STATE.currentThemeIndex + 1) % 2); 
+                        switchTheme((STATE.currentThemeIndex + 1) % 3); 
                         STATE.gestureDebounceTimer = Date.now(); 
                     }
                 }
             }
 
-            const isPointing = dIndex > 0.1 && dMiddle < dIndex*0.7 && dRing < dIndex*0.7;
+            if (isOkGesture) {
+                // OK：仅聚焦照片
+                if (!STATE.focusTarget || STATE.focusTargetType !== 'PHOTO') {
+                    const target = pickFrontContentTarget('PHOTO');
+                    if (target) {
+                        STATE.focusTarget = target.mesh;
+                        STATE.focusTargetType = 'PHOTO';
+                        STATE.mode = 'FOCUS';
+                    }
+                }
+                STATE.wasOkGesture = true;
+                if (STATE.mode === 'FOCUS') return;
+            } else {
+                if (STATE.wasOkGesture && STATE.mode === 'FOCUS' && STATE.focusTargetType === 'PHOTO') {
+                    STATE.mode = 'TREE';
+                    STATE.focusTarget = null;
+                    STATE.focusTargetType = null;
+                }
+                STATE.wasOkGesture = false;
+            }
+
+            if (isThumbsUpGesture) {
+                // 点赞（大拇指竖起）：仅聚焦书信
+                if (!STATE.focusTarget || STATE.focusTargetType !== 'LETTER') {
+                    const target = pickFrontContentTarget('LETTER');
+                    if (target) {
+                        STATE.focusTarget = target.mesh;
+                        STATE.focusTargetType = 'LETTER';
+                        STATE.mode = 'FOCUS';
+                    }
+                }
+                STATE.wasThumbsUpGesture = true;
+                if (STATE.mode === 'FOCUS') return;
+            } else {
+                if (STATE.wasThumbsUpGesture && STATE.mode === 'FOCUS' && STATE.focusTargetType === 'LETTER') {
+                    STATE.mode = 'TREE';
+                    STATE.focusTarget = null;
+                    STATE.focusTargetType = null;
+                }
+                STATE.wasThumbsUpGesture = false;
+            }
+
             const avgSpread = (dIndex+dMiddle+dRing+dPinky)/4, isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
 
-            if (isPointing) { 
-                STATE.mode = 'FOCUS';
-                if (!STATE.wasPointing) {
-                    const photos = particleSystem.filter(p => p.type === 'PHOTO');
-                    STATE.focusTarget = photos.length ? photos[(++STATE.currentPhotoIndex)%photos.length].mesh : STATE.starMesh;
+            if (isPalmOpen) {
+                if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
+                    STATE.palmCenter = {x: lm[9].x, y: lm[9].y}; STATE.hasPalmCenter = true; STATE.gestureBaseSpread = avgSpread; STATE.scatterScale = 1.0;
                 }
-                STATE.wasPointing = true; STATE.hasPalmCenter = false; STATE.spinVel.x *= 0.9; STATE.spinVel.y *= 0.9;
-            } else { 
-                STATE.wasPointing = false;
-                if (isPalmOpen) {
-                    if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
-                        STATE.palmCenter = {x: lm[9].x, y: lm[9].y}; STATE.hasPalmCenter = true; STATE.gestureBaseSpread = avgSpread; STATE.scatterScale = 1.0;
-                    }
-                    STATE.mode = 'SCATTER';
-                    if (STATE.gestureBaseSpread) STATE.scatterScale += (THREE.MathUtils.clamp(Math.pow(STATE.gestureBaseSpread/avgSpread, 2), 0.1, 5.0) - STATE.scatterScale) * 0.15;
-                    const gain = CONFIG.gestures.sensitivity, dx = lm[9].x - STATE.palmCenter.x, dy = lm[9].y - STATE.palmCenter.y;
-                    STATE.spinVel.x += (THREE.MathUtils.clamp(-dy*gain, -3, 3) - STATE.spinVel.x) * 0.2;
-                    STATE.spinVel.y += (THREE.MathUtils.clamp(dx*gain, -3, 3) - STATE.spinVel.y) * 0.2;
-                } else {
-                    STATE.mode = 'TREE'; STATE.hasPalmCenter = false; STATE.scatterScale = 1.0; STATE.spinVel.x *= 0.9; STATE.spinVel.y *= 0.9;
+                STATE.mode = 'SCATTER';
+                if (STATE.gestureBaseSpread) {
+                    const spreadRatio = THREE.MathUtils.clamp(avgSpread / STATE.gestureBaseSpread, 0.6, 2.4);
+                    STATE.scatterScale += (spreadRatio - STATE.scatterScale) * 0.15;
                 }
+                const gain = CONFIG.gestures.sensitivity, dx = lm[9].x - STATE.palmCenter.x, dy = lm[9].y - STATE.palmCenter.y;
+                STATE.spinVel.x += (THREE.MathUtils.clamp(-dy*gain, -3, 3) - STATE.spinVel.x) * 0.2;
+                STATE.spinVel.y += (THREE.MathUtils.clamp(dx*gain, -3, 3) - STATE.spinVel.y) * 0.2;
+            } else {
+                STATE.mode = 'TREE'; STATE.hasPalmCenter = false; STATE.scatterScale = 1.0; STATE.gestureBaseSpread = null; STATE.spinVel.x *= 0.9; STATE.spinVel.y *= 0.9;
             }
             
             if (STATE.mode !== 'FOCUS') {
@@ -824,15 +2574,44 @@
             }
         }
 
-        function animate() {
+        
+        function updateLanternOrbs(dt) {
+            if (!outlineOrbSystem || !outlineOrbSystem.geometry || !outlineOrbSystem.geometry.attributes) return;
+            const posAttr = outlineOrbSystem.geometry.attributes.position;
+            if (!posAttr) return;
+            const arr = posAttr.array;
+            const base = outlineOrbSystem.userData ? outlineOrbSystem.userData.basePositions : null;
+            const scatter = outlineOrbSystem.userData ? outlineOrbSystem.userData.scatterPositions : null;
+            if (!base || !scatter || base.length !== arr.length || scatter.length !== arr.length) return;
+
+            const mode = STATE.mode;
+            const isScatter = mode === 'SCATTER';
+            const isFocus = mode === 'FOCUS';
+            const scale = isScatter ? (STATE.scatterScale || 1.0) : 1.0;
+
+            // Exponential smoothing to be frame-rate independent
+            const k = isScatter ? 7.5 : 6.0;
+            const alpha = 1.0 - Math.exp(-k * Math.max(0.0, dt));
+
+            for (let i = 0; i < arr.length; i++) {
+                const t = isScatter ? (scatter[i] * scale) : base[i];
+                arr[i] += (t - arr[i]) * alpha;
+            }
+            posAttr.needsUpdate = true;
+
+            if (outlineOrbSystem.material) {
+                const targetOpacity = isFocus ? 0.78 : (isScatter ? 0.98 : 0.92);
+                outlineOrbSystem.material.opacity += (targetOpacity - outlineOrbSystem.material.opacity) * alpha;
+            }
+        }
+
+function animate() {
             requestAnimationFrame(animate);
             const dt = clock.getDelta(); STATE.time = clock.elapsedTime;
             const inputX = STATE.hand.detected ? STATE.hand.x : 0; 
 
-            if (STATE.mode === 'LETTER') {
-                STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, Math.PI/4, dt * 1.5); STATE.rotation.y -= 0.1 * dt;
-            } else if (STATE.mode === 'TREE') {
-                const baseSpeed = (STATE.currentThemeIndex === 1) ? 0.6 : 0.4;
+            if (STATE.mode === 'TREE') {
+                const baseSpeed = 0.35;
                 STATE.rotation.y -= baseSpeed * dt; 
                 STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
                 mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
@@ -845,115 +2624,139 @@
 
             mainGroup.rotation.y = STATE.rotation.y; mainGroup.rotation.x = STATE.rotation.x; 
             
-            if (galaxySystem && galaxySystem.visible) {
-                bgGroup.rotation.y -= 0.05 * dt; 
-            } else if (heartSystem && heartSystem.visible) {
-                const sys = heartSystem;
+            if (emberSystem && emberSystem.visible) {
+                bgGroup.rotation.y -= 0.03 * dt; 
+            } else if ((sparkSystem && sparkSystem.visible) || (petalSystem && petalSystem.visible)) {
+                const sys = sparkSystem.visible ? sparkSystem : petalSystem;
                 const positions = sys.geometry.attributes.position.array;
                 const velocities = sys.geometry.attributes.velocity.array;
-                const count = 1500;
+                const count = velocities.length;
                 
                 for(let i=0; i<count; i++) {
-                    positions[i*3+1] -= 8 * velocities[i] * dt;
+                    positions[i*3+1] -= CONFIG.particles.driftSpeed * velocities[i] * dt;
                     if (positions[i*3+1] < -50) {
                         positions[i*3+1] = 50;
                     }
                 }
                 sys.geometry.attributes.position.needsUpdate = true;
-                bgGroup.rotation.y -= 0.02 * dt; 
+                bgGroup.rotation.y -= 0.015 * dt; 
             }
 
-            if (STATE.starMesh) {
-                STATE.starMesh.rotation.y -= dt; STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
-                STATE.starMesh.scale.setScalar(1.0 + Math.sin(STATE.time * 2) * 0.1);
+            if (STATE.emblemMesh) {
+                STATE.emblemMesh.rotation.y -= dt * 0.6;
+                STATE.emblemMesh.rotation.z = Math.sin(STATE.time) * 0.15;
+                STATE.emblemMesh.scale.setScalar(1.0 + Math.sin(STATE.time * 2) * 0.08);
             }
-
             particleSystem.forEach(p => p.update(dt, STATE.time, STATE.mode, STATE.focusTarget, (STATE.mode === 'FOCUS' ? _invMatrix : null)));
+            updateLanternOrbs(dt);
+            // Focus readability: reduce bloom glare on photos/letters only while focusing
+            if (bloomPass && STATE.quality && STATE.quality.settings) {
+                const baseStrength = STATE.quality.settings.bloomStrength;
+                const baseThreshold = (STATE.quality.bloomThresholdBase ?? 0.62);
+                const baseRadius = (STATE.quality.bloomRadiusBase ?? 0.65);
+                let targetStrength = baseStrength;
+                let targetThreshold = baseThreshold;
+                let targetRadius = baseRadius;
+                if (STATE.mode === 'FOCUS' && STATE.focusTargetType === 'PHOTO') {
+                    targetStrength = baseStrength * 0.72;
+                    targetThreshold = Math.min(0.78, baseThreshold + 0.08);
+                    targetRadius = Math.max(0.45, baseRadius - 0.08);
+                } else if (STATE.mode === 'FOCUS' && STATE.focusTargetType === 'LETTER') {
+                    targetStrength = baseStrength * 0.80;
+                    targetThreshold = Math.min(0.76, baseThreshold + 0.06);
+                    targetRadius = Math.max(0.48, baseRadius - 0.06);
+                }
+                // Smooth to avoid flicker
+                bloomPass.strength += (targetStrength - bloomPass.strength) * 0.18;
+                bloomPass.threshold += (targetThreshold - bloomPass.threshold) * 0.18;
+                bloomPass.radius += (targetRadius - bloomPass.radius) * 0.18;
+            }
             composer.render();
         }
 
         function setupEvents() {
-            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
-            
-            const fileInput = document.getElementById('file-input');
-            document.getElementById('btn-add-photo').onclick = (e) => { e.stopPropagation(); fileInput.click(); };
-            fileInput.onchange = handleImageUpload;
+            window.addEventListener('resize', handleResize);
 
-            const musicInput = document.getElementById('music-input'), audioEl = document.getElementById('bg-music');
-            document.getElementById('btn-bg-music').onclick = (e) => { e.stopPropagation(); musicInput.click(); };
-            
-            musicInput.onchange = (e) => { 
-                if(e.target.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(evt) {
-                        STATE.musicData = evt.target.result; 
-                        audioEl.src = evt.target.result; 
-                        audioEl.currentTime = 0; 
-                        audioEl.play().catch(console.warn); 
-                    };
-                    reader.readAsDataURL(e.target.files[0]);
-                } 
-            };
-
-            document.getElementById('btn-set-title').onclick = (e) => {
+            const fsBtn = document.getElementById('btn-fullscreen');
+            fsBtn.onclick = (e) => {
                 e.stopPropagation();
-                const currentTitle = document.getElementById('main-title').innerText;
-                const newTitle = prompt("请输入页面标题:", currentTitle);
-                if (newTitle !== null) {
-                    document.getElementById('main-title').innerText = newTitle;
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    document.documentElement.requestFullscreen().catch(() => {});
                 }
             };
 
-            const fsBtn = document.getElementById('btn-fullscreen');
-            fsBtn.onclick = (e) => { e.stopPropagation(); document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); };
-            
-            document.addEventListener('fullscreenchange', () => { 
-                const isFs = !!document.fullscreenElement;
-                const label = isFs ? '取消全屏' : '全屏显示';
-                const labelSpan = fsBtn.querySelector('span');
-                if (labelSpan) labelSpan.textContent = label;
-                
-                const colMedia = document.getElementById('col-media');
-                const btnImport = document.getElementById('btn-import');
-                const btnExport = document.getElementById('btn-export');
-                const btnSwitch = document.getElementById('btn-switch-theme');
+            const settingsBtn = document.getElementById('btn-settings');
+            const settingsPanel = document.getElementById('settings-panel');
+            const settingsBackdrop = document.getElementById('settings-backdrop');
+            const closeBtn = document.getElementById('btn-close-settings');
+            const helpBtn = document.getElementById('btn-help');
+            const helpPanel = document.getElementById('help-panel');
+            const helpBackdrop = document.getElementById('help-backdrop');
+            const helpCloseBtn = document.getElementById('btn-close-help');
 
-                if (isFs) {
-                    colMedia.style.display = 'none'; 
-                    btnImport.style.display = 'none'; 
-                    btnExport.style.display = 'none'; 
-                    btnSwitch.style.display = 'none';
-                } else {
-                    colMedia.style.display = 'flex';
-                    btnImport.style.display = 'block';
-                    btnExport.style.display = 'block';
-                    btnSwitch.style.display = 'block';
+            settingsBtn.onclick = (e) => {
+                e.stopPropagation();
+                setHelpOpen(false);
+                if (settingsPanel) setSettingsOpen(!settingsPanel.classList.contains('active'));
+            };
+            if (closeBtn) closeBtn.onclick = (e) => { e.stopPropagation(); setSettingsOpen(false); };
+            if (settingsBackdrop) settingsBackdrop.onclick = () => setSettingsOpen(false);
+            if (helpBtn) {
+                helpBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    setSettingsOpen(false);
+                    if (helpPanel) setHelpOpen(!helpPanel.classList.contains('active'));
+                };
+            }
+            if (helpCloseBtn) helpCloseBtn.onclick = (e) => { e.stopPropagation(); setHelpOpen(false); };
+            if (helpBackdrop) helpBackdrop.onclick = () => setHelpOpen(false);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    setSettingsOpen(false);
+                    setHelpOpen(false);
                 }
             });
 
-            document.getElementById('btn-export').onclick = (e) => { e.stopPropagation(); exportSceneData(); };
-            
-            const importInput = document.getElementById('import-input');
-            document.getElementById('btn-import').onclick = (e) => { e.stopPropagation(); importInput.click(); };
-            importInput.onchange = (e) => {
-                if (e.target.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = (evt) => importSceneData(evt.target.result);
-                    reader.readAsText(e.target.files[0]);
-                }
-            };
+            document.querySelectorAll('#theme-options .chip').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = Number(btn.dataset.theme);
+                    if (!Number.isNaN(index)) switchTheme(index);
+                });
+            });
 
-            const btnSwitch = document.getElementById('btn-switch-theme');
-            btnSwitch.onclick = (e) => {
-                e.stopPropagation();
-                STATE.isGestureSwitchEnabled = !STATE.isGestureSwitchEnabled;
-                btnSwitch.textContent = STATE.isGestureSwitchEnabled ? "颜色切换" : "颜色切换";
-                if (STATE.isGestureSwitchEnabled) {
-                    btnSwitch.classList.remove('disabled');
-                } else {
-                    btnSwitch.classList.add('disabled');
-                }
-            };
+            document.querySelectorAll('#quality-options .chip').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const quality = btn.dataset.quality;
+                    applyQualityPreset(quality);
+                    });
+            });
+
+            const sliders = [
+                { input: 'quality-particles', output: 'quality-particles-value', format: v => Math.round(v) },
+                { input: 'quality-dust', output: 'quality-dust-value', format: v => Math.round(v) },
+                { input: 'quality-embers', output: 'quality-embers-value', format: v => Math.round(v) },
+                { input: 'quality-render', output: 'quality-render-value', format: v => Number(v).toFixed(2) + 'x' },
+                { input: 'quality-bloom', output: 'quality-bloom-value', format: v => Number(v).toFixed(2) }
+            ];
+
+            sliders.forEach(item => {
+                const input = document.getElementById(item.input);
+                const output = document.getElementById(item.output);
+                if (!input || !output) return;
+                input.addEventListener('input', () => {
+                    output.textContent = item.format(input.value);
+                    STATE.quality.preset = 'ultra';
+                    setQualityPresetUI('ultra');
+                    scheduleQualityApply();
+                });
+            });
+
+            updateThemeUI();
+            updateQualityUI();
         }
 
         init();

@@ -287,6 +287,8 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'; 
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         const LOCAL_IMG_DIR = window.LANTERN_LOCAL_IMG_DIR || './img/';
         const LOCAL_IMG_INDEX = window.LANTERN_LOCAL_IMG_INDEX || `${LOCAL_IMG_DIR}index.json`;
@@ -396,6 +398,14 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
 
         const FOCUS_DISTANCE = 15;
 
+        const ORNAMENT_EMISSIVE_BASE = {
+            firecracker: 1.35,
+            knot: 0.95,
+            couplet: 0.85,
+            coin: 0.9,
+            bead: 0.8
+        };
+
         const STATE = {
             mode: 'TREE', focusTarget: null, focusTargetType: null,
             currentThemeIndex: 0,
@@ -416,6 +426,7 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
 
         let scene, camera, renderer, composer, bloomPass, clock = new THREE.Clock();
         let mainGroup, lanternGroup, bgGroup, photoMeshGroup, letterMeshGroup, particleSystem = [];
+        let ornamentFillLight = null;
         let emberSystem = null;
         let sparkSystem = null;
         let petalSystem = null;
@@ -650,6 +661,10 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             coreLight.position.set(0, 0, 8);
             mainGroup.add(coreLight);
 
+            ornamentFillLight = new THREE.PointLight(THEMES[0].lanternGlow, 2.2, 40, 1.4);
+            ornamentFillLight.position.set(0, 0, 2.5);
+            mainGroup.add(ornamentFillLight);
+
             const warmSpot = new THREE.SpotLight(0xffd2a0, 650);
             warmSpot.position.set(32, 50, 30); warmSpot.angle = 0.45; warmSpot.decay = 2;
             scene.add(warmSpot);
@@ -782,38 +797,45 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
             });
             matLib.knot = new THREE.MeshStandardMaterial({
                 color: baseTheme.knot,
-                metalness: 0.4,
-                roughness: 0.35,
-                emissive: baseTheme.accentDeep,
-                emissiveIntensity: 0.2
+                metalness: 0.35,
+                roughness: 0.3,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: ORNAMENT_EMISSIVE_BASE.knot
             });
+            matLib.knot.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.knot;
             matLib.firecracker = new THREE.MeshStandardMaterial({
                 color: baseTheme.firecracker,
                 metalness: 0.2,
-                roughness: 0.45,
-                emissive: baseTheme.accentDeep,
-                emissiveIntensity: 0.5
+                roughness: 0.35,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: ORNAMENT_EMISSIVE_BASE.firecracker
             });
+            matLib.firecracker.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.firecracker;
             matLib.couplet = new THREE.MeshStandardMaterial({
                 map: coupletTexture,
                 color: baseTheme.couplet,
                 metalness: 0.1,
-                roughness: 0.6
+                roughness: 0.5,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: ORNAMENT_EMISSIVE_BASE.couplet
             });
+            matLib.couplet.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.couplet;
             matLib.coin = new THREE.MeshStandardMaterial({
                 color: baseTheme.coin,
                 metalness: 0.9,
-                roughness: 0.25,
-                emissive: baseTheme.accentDeep,
-                emissiveIntensity: 0.35
+                roughness: 0.22,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: ORNAMENT_EMISSIVE_BASE.coin
             });
+            matLib.coin.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.coin;
             matLib.bead = new THREE.MeshStandardMaterial({
                 color: baseTheme.bead,
                 metalness: 0.5,
-                roughness: 0.2,
-                emissive: baseTheme.accentDeep,
-                emissiveIntensity: 0.4
+                roughness: 0.18,
+                emissive: baseTheme.lanternGlow,
+                emissiveIntensity: ORNAMENT_EMISSIVE_BASE.bead
             });
+            matLib.bead.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.bead;
 
             matLib.dust = new THREE.MeshBasicMaterial({
                 color: baseTheme.dust,
@@ -1281,8 +1303,9 @@ for (let i = 0; i < stickStripes; i++) {
                 }
 
                 if (this.hasEmissive && mode === 'TREE' && !this.isDust) {
+                    const baseIntensity = this.mesh.material.userData?.baseEmissiveIntensity ?? this.mesh.material.emissiveIntensity ?? 1.0;
                     const flicker = 0.6 + 0.4 * Math.sin(time * 2 + this.offset);
-                    this.mesh.material.emissiveIntensity = 0.6 + flicker * 1.8;
+                    this.mesh.material.emissiveIntensity = baseIntensity * (0.7 + flicker * 1.1);
                 }
 
                 if (mode !== 'FOCUS') {
@@ -1412,9 +1435,47 @@ for (let i = 0; i < stickStripes; i++) {
             bgGroup.add(petalSystem);
         }
 
+        function createFirecrackerBundleGeometry() {
+            const pieces = [];
+            const tube = new THREE.CylinderGeometry(0.16, 0.16, 0.72, 14, 1, false);
+            const transforms = [
+                { p: [0, 0, 0], r: [0.3, 0.18, -0.12], s: 1.0 },
+                { p: [0, -0.55, 0.2], r: [-0.22, -0.18, 0.24], s: 0.96 },
+                { p: [-0.05, -1.1, -0.05], r: [0.18, 0.26, -0.35], s: 0.92 },
+                { p: [0.12, -1.65, 0.18], r: [-0.28, -0.35, 0.18], s: 0.88 },
+                { p: [-0.08, -2.2, -0.12], r: [0.34, 0.12, -0.42], s: 0.84 },
+                { p: [0.1, -2.7, 0.2], r: [-0.24, -0.28, 0.32], s: 0.82 }
+            ];
+            transforms.forEach(({ p, r, s }) => {
+                const g = tube.clone();
+                const m = new THREE.Matrix4();
+                m.compose(
+                    new THREE.Vector3(p[0], p[1], p[2]),
+                    new THREE.Quaternion().setFromEuler(new THREE.Euler(r[0], r[1], r[2])),
+                    new THREE.Vector3(s, s, s)
+                );
+                g.applyMatrix4(m);
+                pieces.push(g);
+            });
+
+            const cord = new THREE.CylinderGeometry(0.05, 0.05, 2.4, 10, 1, false);
+            cord.translate(0, 0.8, 0);
+            cord.rotateZ(0.18);
+            pieces.push(cord);
+
+            const fuse = new THREE.CylinderGeometry(0.035, 0.035, 0.6, 10, 1, false);
+            fuse.translate(0.2, 1.45, 0.08);
+            fuse.rotateZ(-0.35);
+            pieces.push(fuse);
+
+            const merged = BufferGeometryUtils.mergeBufferGeometries(pieces, false);
+            merged.computeVertexNormals();
+            return merged;
+        }
+
         function createParticles() {
             const knotGeo = new THREE.TorusKnotGeometry(0.24, 0.08, 36, 6);
-            const firecrackerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.7, 12);
+            const firecrackerGeo = createFirecrackerBundleGeometry();
             const coupletGeo = new THREE.BoxGeometry(0.25, 0.95, 0.08);
             const coinGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.08, 16);
             const beadGeo = new THREE.SphereGeometry(0.22, 12, 12);
@@ -1664,6 +1725,16 @@ for (let i = 0; i < stickStripes; i++) {
             matLib.dust.color.setHex(theme.dust);
             matLib.photoFrame.color.setHex(theme.accent);
             matLib.photoBorder.color.setHex(theme.dust);
+            matLib.knot.emissive.setHex(theme.lanternGlow); matLib.knot.emissiveIntensity = ORNAMENT_EMISSIVE_BASE.knot;
+            matLib.firecracker.emissive.setHex(theme.lanternGlow); matLib.firecracker.emissiveIntensity = ORNAMENT_EMISSIVE_BASE.firecracker;
+            matLib.couplet.emissive.setHex(theme.lanternGlow); matLib.couplet.emissiveIntensity = ORNAMENT_EMISSIVE_BASE.couplet;
+            matLib.coin.emissive.setHex(theme.lanternGlow); matLib.coin.emissiveIntensity = ORNAMENT_EMISSIVE_BASE.coin;
+            matLib.bead.emissive.setHex(theme.lanternGlow); matLib.bead.emissiveIntensity = ORNAMENT_EMISSIVE_BASE.bead;
+            matLib.knot.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.knot;
+            matLib.firecracker.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.firecracker;
+            matLib.couplet.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.couplet;
+            matLib.coin.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.coin;
+            matLib.bead.userData.baseEmissiveIntensity = ORNAMENT_EMISSIVE_BASE.bead;
 
 
             if (outlineOrbSystem && outlineOrbSystem.material) {
@@ -1674,6 +1745,9 @@ for (let i = 0; i < stickStripes; i++) {
             if (emberSystem) emberSystem.material.color.setHex(theme.ember);
             if (sparkSystem) sparkSystem.material.color.setHex(theme.spark);
             if (petalSystem) petalSystem.material.color.setHex(theme.petal);
+            if (ornamentFillLight) {
+                ornamentFillLight.color.setHex(theme.lanternGlow);
+            }
 
             if (STATE.emblemHaloMesh) {
                 STATE.emblemHaloMesh.material.color.setHex(theme.ember);
@@ -2696,6 +2770,28 @@ const isThumbsUpGesture = isThumbExtended && (curledCount >= 3) && dist(4,8) > 0
             }
         }
 
+        function updateOrnamentGlow(time) {
+            const pulse = 1.0 + Math.sin(time * 1.35) * 0.12 + Math.sin(time * 0.72) * 0.06;
+            const targetIntensity = {
+                firecracker: ORNAMENT_EMISSIVE_BASE.firecracker * pulse,
+                knot: ORNAMENT_EMISSIVE_BASE.knot * pulse,
+                couplet: ORNAMENT_EMISSIVE_BASE.couplet * pulse,
+                coin: ORNAMENT_EMISSIVE_BASE.coin * pulse,
+                bead: ORNAMENT_EMISSIVE_BASE.bead * pulse
+            };
+            ['firecracker','knot','couplet','coin','bead'].forEach(key => {
+                const mat = matLib[key];
+                if (mat) {
+                    mat.emissiveIntensity += (targetIntensity[key] - mat.emissiveIntensity) * 0.08;
+                }
+            });
+            if (ornamentFillLight) {
+                const base = 2.2;
+                ornamentFillLight.intensity += ((base + Math.sin(time * 1.1) * 0.6) - ornamentFillLight.intensity) * 0.12;
+                ornamentFillLight.position.z = 2.5 + Math.sin(time * 0.85) * 0.35;
+            }
+        }
+
 function animate() {
             requestAnimationFrame(animate);
             const dt = clock.getDelta(); STATE.time = clock.elapsedTime;
@@ -2740,6 +2836,7 @@ function animate() {
             }
             particleSystem.forEach(p => p.update(dt, STATE.time, STATE.mode, STATE.focusTarget, (STATE.mode === 'FOCUS' ? _invMatrix : null)));
             updateLanternOrbs(dt);
+            updateOrnamentGlow(STATE.time);
             // Focus readability: reduce bloom glare on photos/letters only while focusing
             if (bloomPass && STATE.quality && STATE.quality.settings) {
                 const baseStrength = STATE.quality.settings.bloomStrength;

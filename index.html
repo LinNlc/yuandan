@@ -300,19 +300,19 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         };
 
         const QUALITY_PRESETS = {
-            low: { particleCount: 520, dustCount: 520, bgCount: 820, orbCount: 780, renderScale: 0.9, bloomStrength: 0.4 },
-            medium: { particleCount: 900, dustCount: 850, bgCount: 1350, orbCount: 1200, renderScale: 1.0, bloomStrength: 0.55 },
-            high: { particleCount: 1250, dustCount: 1180, bgCount: 1850, orbCount: 1550, renderScale: 1.05, bloomStrength: 0.8 },
-            ultra: { particleCount: 1600, dustCount: 1500, bgCount: 2400, orbCount: 1800, renderScale: 1.1, bloomStrength: 1.1 }
+            low: { particleCount: 50, dustCount: 50, bgCount: 100, orbCount: 50, renderScale: 0.4, bloomStrength: 0.4 },
+            medium: { particleCount: 400, dustCount: 400, bgCount: 600, orbCount: 400, renderScale: 0.7, bloomStrength: 0.7 },
+            high: { particleCount: 600, dustCount: 600, bgCount: 800, orbCount: 600, renderScale: 0.9, bloomStrength: 0.9 },
+            ultra: { particleCount: 800, dustCount: 800, bgCount: 1000, orbCount: 800, renderScale: 1.0, bloomStrength: 1.0 }
         };
 
         const QUALITY_LIMITS = {
-            particleCount: [500, 2200],
-            dustCount: [350, 1800],
-            bgCount: [500, 2600],
-            orbCount: [0, 2000],
-            renderScale: [0.7, 1.3],
-            bloomStrength: [0, 1.2]
+            particleCount: [200, 1000],
+            dustCount: [200, 1000],
+            bgCount: [200, 1000],
+            orbCount: [0, 1000],
+            renderScale: [0.4, 1.1],
+            bloomStrength: [0, 1.1]
         };
 
         const THEMES = [
@@ -431,14 +431,17 @@ const CONTENT_URL = window.LANTERN_CONTENT_URL || './lantern-content.json';
         let isPredicting = false;
         let lanternTexture, coupletTexture, emberTexture, petalTexture, glowTexture, matLib = {};
         let qualityApplyTimer = null;
-        let tasselStrands = [];
         
         const _tempVec = new THREE.Vector3();
         const _targetVec = new THREE.Vector3();
         const _invMatrix = new THREE.Matrix4();
         const _focusVec = new THREE.Vector3();
         const _focusNdc = new THREE.Vector3();
-
+        const _instMatrix = new THREE.Matrix4();
+        const _instPos = new THREE.Vector3();
+        const _instQuat = new THREE.Quaternion();
+        const _instScale = new THREE.Vector3();
+        
         // ====== Lantern mesh -> particle sampling (surface) ======
         // Particles will sample positions from the generated lantern mesh geometry.
         let LANTERN_SAMPLERS = null;
@@ -1028,40 +1031,34 @@ stickGroup.name = "StickStripes";
 stickGroup.position.y = stickCenterY;
 skeleton.add(stickGroup);
 
-// 改为一圈飘动的红色丝线，弱化硬质竖杆感
-const tasselRoot = new THREE.Group();
-tasselRoot.position.y = stickBottomAnchorY - 0.35;
-skeleton.add(tasselRoot);
+// 直线曲线（局部坐标，围绕y轴）
+const stickCurve = new THREE.LineCurve3(
+    new THREE.Vector3(0, stickLen / 2, 0),
+    new THREE.Vector3(0, -stickLen / 2, 0)
+);
 
-tasselStrands = [];
-const tasselLen = CONFIG.lantern.tasselLen ?? 9.2;
-const strandCount = CONFIG.lantern.tasselThreads ?? 26;
-const strandGeo = new THREE.CylinderGeometry(0.07, 0.04, tasselLen, 6);
-for (let i = 0; i < strandCount; i++) {
-    const a = (i / strandCount) * Math.PI * 2;
-    const strand = new THREE.Mesh(strandGeo, redMat);
-    strand.position.set(Math.cos(a) * (stripeOffset * 1.25), -tasselLen * 0.5, Math.sin(a) * (stripeOffset * 1.25));
-    const baseTiltX = -0.35 + (Math.random() - 0.5) * 0.15;
-    const baseTwistZ = (Math.random() - 0.5) * 0.25;
-    strand.rotation.x = baseTiltX;
-    strand.rotation.z = baseTwistZ;
-    strand.userData.baseTiltX = baseTiltX;
-    strand.userData.baseTwistZ = baseTwistZ;
-    strand.userData.sampleTag = "STICK";
-    tasselRoot.add(strand);
-    tasselStrands.push(strand);
+const stickTubeSeg = 20;
+const stickRadSeg = 8;
+
+for (let i = 0; i < stickStripes; i++) {
+    const a = (i / stickStripes) * Math.PI * 2;
+    const tubeGeo = new THREE.TubeGeometry(stickCurve, stickTubeSeg, stripeRadius, stickRadSeg, false);
+    const tube = new THREE.Mesh(tubeGeo, frameMat);
+    tube.position.set(Math.cos(a) * stripeOffset, 0, Math.sin(a) * stripeOffset);
+    tube.userData.sampleTag = "STICK";
+    stickGroup.add(tube);
 }
 // --- 6) Tassel / ribbon bundle (底部绸带/线束：让粒子轮廓“有尾巴”更像灯笼) ---
-            const tasselTopY = stickBottomAnchorY - stickLen * 0.35;
+            const tasselLen = CONFIG.lantern.tasselLen ?? 8.8;
+            const tasselTopY = stickCenterY - stickLen / 2 - 0.3;
 
             // 多根竖线（像参考图杆下端的纵向条纹/线束）
-            const threadCount = Math.max(8, Math.floor((CONFIG.lantern.tasselThreads ?? 26) * 0.55));
-            const threadGeo = new THREE.CylinderGeometry(0.045, 0.045, tasselLen * 0.82, 6);
+            const threadCount = CONFIG.lantern.tasselThreads ?? 18;
+            const threadGeo = new THREE.CylinderGeometry(0.045, 0.045, tasselLen * 0.9, 6);
             for (let i = 0; i < threadCount; i++) {
-                const th = new THREE.Mesh(threadGeo, redMat);
+                const th = new THREE.Mesh(threadGeo, frameMat);
                 const a = (i / threadCount) * Math.PI * 2;
-                th.position.set(Math.cos(a) * 0.35, tasselTopY - tasselLen * 0.42, Math.sin(a) * 0.35);
-                th.rotation.z = (Math.random() - 0.5) * 0.18;
+                th.position.set(Math.cos(a) * 0.35, tasselTopY - tasselLen * 0.45, Math.sin(a) * 0.35);
                 th.userData.sampleTag = "TASSEL";
                 skeleton.add(th);
             }
@@ -1176,11 +1173,21 @@ for (let i = 0; i < strandCount; i++) {
                 this.mesh = mesh; this.type = type; this.isDust = isDust;
                 this.instancedMesh = instancedMesh; this.instancedIndex = instancedIndex;
                 this.posTree = new THREE.Vector3(); this.posScatter = new THREE.Vector3();
-                this.baseScale = mesh.scale.x; this.focusScale = mesh.userData.focusScale || 5.0; this.baseSize = mesh.userData.baseSize || null; this.offset = Math.random() * 100; this.speed = 0.5 + Math.random();
+                // Preserve per-instance scale variety for instanced meshes instead of defaulting to 1
+                if (this.instancedMesh) {
+                    this.instancedMesh.getMatrixAt(this.instancedIndex, _instMatrix);
+                    _instMatrix.decompose(_instPos, _instQuat, _instScale);
+                    this.baseScale = _instScale.x;
+                } else {
+                    this.baseScale = mesh.scale.x;
+                }
+
+                this.focusScale = mesh.userData.focusScale || 5.0; this.baseSize = mesh.userData.baseSize || null; this.offset = Math.random() * 100; this.speed = 0.5 + Math.random();
                 // Photos/letters: add a subtle random scale-up during SCATTER (palm open)
                 this.scatterScaleBonus = (type === 'PHOTO') ? (0.18 + Math.random() * 0.28) : (type === 'LETTER') ? (0.12 + Math.random() * 0.22) : 0.0;
                 if (mesh.material && mesh.material.emissive) { this.baseEmissive = mesh.material.emissive.clone(); this.hasEmissive = true; }
                 this.calculatePositions();
+                this.initializeTransform();
             }
 
             calculatePositions() {
@@ -1300,6 +1307,25 @@ for (let i = 0; i < strandCount; i++) {
                 } else {
                     this.mesh.position.lerp(_tempVec, lerpSpeed * dt);
                     this.mesh.scale.lerp(_tempVec.set(s,s,s), 5*dt);
+                }
+            }
+            
+            initializeTransform() {
+                const startPos = (STATE.mode === 'SCATTER')
+                    ? _tempVec.copy(this.posScatter).multiplyScalar(STATE.scatterScale || 1.0)
+                    : this.posTree;
+
+                if (this.instancedMesh) {
+                    this.instancedMesh.getMatrixAt(this.instancedIndex, _instMatrix);
+                    _instMatrix.decompose(_instPos, _instQuat, _instScale);
+                    _instPos.copy(startPos);
+                    _instScale.setScalar(this.baseScale);
+                    _instMatrix.compose(_instPos, _instQuat, _instScale);
+                    this.instancedMesh.setMatrixAt(this.instancedIndex, _instMatrix);
+                    this.instancedMesh.instanceMatrix.needsUpdate = true;
+                } else {
+                    this.mesh.position.copy(startPos);
+                    this.mesh.scale.setScalar(this.baseScale);
                 }
             }
         }
@@ -1430,7 +1456,7 @@ for (let i = 0; i < strandCount; i++) {
                 const mesh = instancePools.find(m => m.userData.type === type);
                 const idx = instanceIndex[type];
                 if (idx < mesh.count) {
-                    const s = 0.72 + Math.random() * 0.55;
+                    const s = 1.4 + Math.random() * 1.5;
                     _m.identity();
                     _m.makeRotationFromEuler(new THREE.Euler(Math.random()*6, Math.random()*6, Math.random()*6));
                     _m.scale(new THREE.Vector3(s,s,s));
@@ -2711,16 +2737,6 @@ function animate() {
                 STATE.emblemMesh.rotation.y -= dt * 0.6;
                 STATE.emblemMesh.rotation.z = Math.sin(STATE.time) * 0.15;
                 STATE.emblemMesh.scale.setScalar(1.0 + Math.sin(STATE.time * 2) * 0.08);
-            }
-            if (tasselStrands && tasselStrands.length) {
-                const t = STATE.time;
-                for (let i = 0; i < tasselStrands.length; i++) {
-                    const strand = tasselStrands[i];
-                    const sway = Math.sin(t * 2.4 + i * 0.45) * 0.35;
-                    const drift = Math.cos(t * 1.8 + i * 0.32) * 0.18;
-                    strand.rotation.z = (strand.userData.baseTwistZ || 0) + sway * 0.6;
-                    strand.rotation.x = (strand.userData.baseTiltX || -0.3) - 0.1 + drift;
-                }
             }
             particleSystem.forEach(p => p.update(dt, STATE.time, STATE.mode, STATE.focusTarget, (STATE.mode === 'FOCUS' ? _invMatrix : null)));
             updateLanternOrbs(dt);

@@ -1275,20 +1275,6 @@ for (let i = 0; i < stickStripes; i++) {
                     _tempVec.y += Math.sin(time * this.speed + this.offset) * floatScale; 
                     _tempVec.x += Math.cos(time * 0.5 * this.speed + this.offset) * 0.08; 
                 }
-                if (this.instancedMesh) {
-                    const m = new THREE.Matrix4();
-                    this.instancedMesh.getMatrixAt(this.instancedIndex, m);
-                    const pos = new THREE.Vector3(); const rot = new THREE.Quaternion(); const sca = new THREE.Vector3();
-                    m.decompose(pos, rot, sca);
-                    pos.lerp(_tempVec, lerpSpeed * dt);
-                    sca.lerp(_tempVec.set(s,s,s), 5*dt);
-                    m.compose(pos, rot, sca);
-                    this.instancedMesh.setMatrixAt(this.instancedIndex, m);
-                    this.instancedMesh.instanceMatrix.needsUpdate = true;
-                } else {
-                    this.mesh.position.lerp(_tempVec, lerpSpeed * dt);
-                    this.mesh.scale.lerp(_tempVec.set(s,s,s), 5*dt);
-                }
 
                 if (this.hasEmissive && mode === 'TREE' && !this.isDust) {
                     const flicker = 0.6 + 0.4 * Math.sin(time * 2 + this.offset);
@@ -1302,6 +1288,21 @@ for (let i = 0; i < stickStripes; i++) {
                 if (mode === 'SCATTER' && !this.isDust && this.scatterScaleBonus > 0) {
                     const openAmt = THREE.MathUtils.clamp((STATE.scatterScale - 1.0) / 1.0, 0.0, 1.0);
                     s = this.baseScale * (1.0 + openAmt * this.scatterScaleBonus);
+                }
+
+                if (this.instancedMesh) {
+                    const m = new THREE.Matrix4();
+                    this.instancedMesh.getMatrixAt(this.instancedIndex, m);
+                    const pos = new THREE.Vector3(); const rot = new THREE.Quaternion(); const sca = new THREE.Vector3();
+                    m.decompose(pos, rot, sca);
+                    pos.lerp(_tempVec, lerpSpeed * dt);
+                    sca.lerp(_tempVec.set(s,s,s), 5*dt);
+                    m.compose(pos, rot, sca);
+                    this.instancedMesh.setMatrixAt(this.instancedIndex, m);
+                    this.instancedMesh.instanceMatrix.needsUpdate = true;
+                } else {
+                    this.mesh.position.lerp(_tempVec, lerpSpeed * dt);
+                    this.mesh.scale.lerp(_tempVec.set(s,s,s), 5*dt);
                 }
             }
         }
